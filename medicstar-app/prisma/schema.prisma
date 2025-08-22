@@ -30,3 +30,8 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model WebConnector {
+  id                    String @id
+  externalAccessToken   String
+}

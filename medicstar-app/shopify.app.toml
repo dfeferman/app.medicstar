@@ -3,7 +3,7 @@
 client_id = "f41436f31d7d26a7e195c8c61f7df78f"
 name = "medicstar-app"
 handle = "medicstar-app"
-application_url = "https://039f3f463af0.ngrok.app"
+application_url = "https://1ebbe643d708.ngrok.app"
 embedded = true
 
 [build]
@@ -32,7 +32,7 @@ api_version = "2025-07"
 scopes = "write_products, read_orders"
 
 [auth]
-redirect_urls = ["https://039f3f463af0.ngrok.app/auth/callback", "https://039f3f463af0.ngrok.app/auth/shopify/callback", "https://039f3f463af0.ngrok.app/api/auth/callback"]
+redirect_urls = ["https://1ebbe643d708.ngrok.app/auth/callback", "https://1ebbe643d708.ngrok.app/auth/shopify/callback", "https://1ebbe643d708.ngrok.app/api/auth/callback"]
 
 [pos]
 embedded = false
