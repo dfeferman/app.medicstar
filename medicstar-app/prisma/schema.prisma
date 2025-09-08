@@ -35,3 +35,13 @@ model WebConnector {
   id                    String @id
   externalAccessToken   String
 }
+
+model Contact {
+  id                                  Int       @id @default(autoincrement())
+  shopifyCustomerId                   String
+  email                               String
+  businessCenterContactNo             String
+  businessCenterCustomerTemplateCode  String
+
+  @@index([businessCenterContactNo])
+}
