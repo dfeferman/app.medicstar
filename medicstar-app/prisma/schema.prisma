@@ -31,11 +31,6 @@ model Session {
   emailVerified Boolean?  @default(false)
 }
 
-model WebConnector {
-  id                    String @id
-  externalAccessToken   String
-}
-
 model Contact {
   id                                  Int       @id @default(autoincrement())
   shopifyCustomerId                   String

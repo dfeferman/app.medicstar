@@ -1,7 +1,7 @@
 import { unauthenticated } from "../../shopify.server";
 
-export async function tagOrderWithExternalDoc(shopDomain: string, orderGid: string, externalDocumentNo: string): Promise<any> {
-  if (!shopDomain || !orderGid || !externalDocumentNo) return null;
+export async function tagOrderWithExternalDoc(shopDomain: string, orderGid: string, documentNo: string): Promise<any> {
+  if (!shopDomain || !orderGid || !documentNo) return null;
 
   const { admin: { graphql } } = await unauthenticated.admin(shopDomain);
   const mutation = `
@@ -12,9 +12,10 @@ export async function tagOrderWithExternalDoc(shopDomain: string, orderGid: stri
           }
         }
     }`;
-  const tags = [`${externalDocumentNo}`];
+  const tags = [`${documentNo}`];
   const res = await graphql(mutation, { variables: { id: orderGid, tags } });
   const json = await res.json();
+  console.log('<<<<<<<<<<<<Tag Order Response body:>>>>>>>>>>>>>', JSON.stringify(json, null, 2) );
   return json;
 }
 

@@ -1,5 +1,6 @@
 import "dotenv/config.js";
 import { NS, envelope, postSoap, parseSoapBody } from "../../../lib/soap";
+import { formatDate, formatTime } from "../../utils/datetime";
 
 const endpoint = process.env.NAV_ENDPOINT_ORDER as string;
 const user = process.env.NAV_USER as string;
@@ -12,8 +13,8 @@ export type OrderProduct = {
 };
 
 export type ShippingLine = {
-  code: string;
-  carrier_identifier: string;
+  code?: string;
+  carrier_identifier?: string;
 };
 
 export type OrderInput = {
@@ -28,32 +29,19 @@ export type OrderInput = {
   sellToCountry: string;
   sellToEmail: string;
   shippingLines: ShippingLine[];
+  shipToName: string;
+  shipToAddress: string;
+  shipToPostCode: string;
+  shipToCity: string;
+  shipToCountry: string;
 };
 
 export type CreateOrderResult = { documentNo?: string };
 
-function formatDate(dateString: string): string {
-  const d = new Date(dateString);
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatTime(dateString: string): string {
-  const d = new Date(dateString);
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  const ss = String(d.getUTCSeconds()).padStart(2, "0");
-  const offset = d.getTimezoneOffset();
-  const offsetHours = Math.floor(Math.abs(offset) / 60);
-  const offsetMinutes = Math.abs(offset) % 60;
-  const offsetSign = offset <= 0 ? "+" : "-";
-  return `${hh}:${mm}:${ss}.0000000${offsetSign}${String(offsetHours).padStart(2, "0")}:${String(offsetMinutes).padStart(2, "0")}`;
-}
-
 export async function createOrder(order: OrderInput): Promise<CreateOrderResult> {
   const shippingAgentCode = order.shippingLines?.[0]?.carrier_identifier || "";
+  const shippingAgentServiceCode = order.shippingLines?.[0]?.code || "";
+
   const formattedOrderDate = formatDate(order.orderDate);
   const formattedOrderTime = formatTime(order.orderDate);
 
@@ -93,6 +81,15 @@ export async function createOrder(order: OrderInput): Promise<CreateOrderResult>
       <x53:E_Mail_Address>${order.sellToEmail}</x53:E_Mail_Address>
     </x53:Header_Sell_To_Customer>
 
+
+    <x53:Header_Ship_To_Customer>
+      <x53:Name>${order.shipToName}</x53:Name>
+      <x53:Address>${order.shipToAddress}</x53:Address>
+      <x53:Post_Code>${order.shipToPostCode}</x53:Post_Code>
+      <x53:City>${order.shipToCity}</x53:City>
+      <x53:Country_Code>${order.shipToCountry}</x53:Country_Code>
+    </x53:Header_Ship_To_Customer>
+
     <x53:Sales_Lines>
       ${salesLines}
     </x53:Sales_Lines>
@@ -108,12 +105,9 @@ export async function createOrder(order: OrderInput): Promise<CreateOrderResult>
     bodyXml,
   });
 
-  console.log('<<<<<<<<<<<<Order SOAP Request XML:>>>>>>>>>>>>>', xml);
-
   const resp = await postSoap({ endpoint, action: NS.ORDER.ACTION, xml, user, pass });
   const body = await parseSoapBody(resp);
 
-  console.log('<<<<<<<<<<<<Order SOAP Response body:>>>>>>>>>>>>>', JSON.stringify(body, null, 2) );
   const documentNo = body.CreateSalesOrderResponse?.inboundCreateInbOrder?.Header_General?.Document_No;
   return { documentNo };
 }

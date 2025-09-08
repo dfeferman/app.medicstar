@@ -4,7 +4,7 @@ export async function getCustomerTemplateCodeFromCart(shopDomain: string, cartTo
     const sfVersion: string = process.env.SHOPIFY_STOREFRONT_API_VERSION || "2025-07";
     if (!sfToken) {
       console.error("SHOPIFY_STOREFRONT_ACCESS_TOKEN is not set");
-      return "PRIVAT";
+      return "";
     };
 
     const endpoint = `https://${shopDomain}/api/${sfVersion}/graphql.json`;
@@ -26,10 +26,10 @@ export async function getCustomerTemplateCodeFromCart(shopDomain: string, cartTo
     const data = await res.json() as { data?: { cart?: { attributes?: Array<{ key: string; value: string }> } } };
     const attrs = data?.data?.cart?.attributes || [];
     const template = (attrs.find((a) => a.key === "customer_template_code")?.value || "").trim();
-    return template || "PRIVAT";
+    return template || "";
   } catch (e) {
     console.error("[Storefront] Failed to fetch cart attributes:", e);
-    return "PRIVAT";
+    return "";
   }
 }
 

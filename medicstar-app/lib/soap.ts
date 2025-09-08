@@ -39,19 +39,32 @@ export function envelope({ action, endpoint, tns, nav, bodyXml }: { action: stri
 }
 
 export async function postSoap({ endpoint, action, xml, user, pass }: { endpoint: string; action: string; xml: string; user: string; pass: string; }): Promise<string> {
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: authHeader(user, pass),
-      "Content-Type": `application/soap+xml; charset=utf-8; action="${action}"`,
-    },
-    body: xml,
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText}\n${text}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    console.log("SOAP POST ->", { endpoint, action, xmlBytes: Buffer.byteLength(xml, "utf8") });
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader(user, pass),
+        "Content-Type": `application/soap+xml; charset=utf-8; action="${action}"`,
+      },
+      body: xml,
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    console.log("SOAP RESP <-", { status: res.status, ok: res.ok, bytes: Buffer.byteLength(text, "utf8") });
+    if (!res.ok) {
+      console.error("SOAP Error Body:", text.slice(0, 2000));
+      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+    return text;
+  } catch (err) {
+    console.error("SOAP Request Failed:", err);
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return text;
 }
 
 export async function parseSoapBody(xml: string): Promise<any> {

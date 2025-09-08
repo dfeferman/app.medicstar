@@ -11,8 +11,6 @@ type NoteAttribute = {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { shop, payload, topic } = await authenticate.webhook(request);
 
-  console.log(`Received ${topic} webhook for ${shop}`);
-
   processOrder(shop, payload).catch(console.error);
   return new Response();
 };
@@ -20,11 +18,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 let order: any;
 
 const processOrder = async (shop: string, payload: any) => {
-  console.log("=== ORDER CREATE WEBHOOK DATA ===");
-  console.log("Full payload:", JSON.stringify(payload, null, 2));
-  console.log("=== END WEBHOOK DATA ===");
-
-
   const noteAttrs = payload.note_attributes as Array<NoteAttribute>;
   const noteTemplate = (noteAttrs.find((a) => a?.name === "kundengruppe")?.value || "").trim();
 
@@ -38,24 +31,27 @@ const processOrder = async (shop: string, payload: any) => {
         quantity: li?.quantity,
         price: li?.price,
       })),
-    sellToName: payload.shipping_address.name,
-    sellToAddress: payload.shipping_address.address1,
-    sellToPostCode: payload.shipping_address.zip,
-    sellToCity: payload.shipping_address.city,
-    sellToCountry: payload.shipping_address.country_code,
+    sellToName: `${payload.customer?.first_name || ''} ${payload.customer?.last_name}`.trim(),
+    sellToAddress: payload.customer?.default_address?.address1,
+    sellToPostCode: payload.customer?.default_address?.zip,
+    sellToCity: payload.customer?.default_address?.city,
+    sellToCountry: payload.customer?.default_address?.country_code,
     sellToEmail: payload.email,
     shippingLines: payload.shipping_lines,
+    shipToName: payload.shipping_address.name,
+    shipToAddress: payload.shipping_address.address1,
+    shipToPostCode: payload.shipping_address.zip,
+    shipToCity: payload.shipping_address.city,
+    shipToCountry: payload.shipping_address.country_code,
   };
 
   try {
     const orderResp = await createOrder(order as OrderInput);
-    console.log('!!!!!!!!orderResp: ', orderResp);
     const documentNo = orderResp.documentNo;
     if (documentNo) {
       const id = payload.admin_graphql_api_id;
       await tagOrderWithExternalDoc(shop, id, documentNo);
     }
   } catch (err) {
-    console.error("NAV create flow failed:", err);
   }
 };
