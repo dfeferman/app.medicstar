@@ -82,7 +82,7 @@ function toPriceStringOrZero(value: unknown): string {
   return n.toFixed(2);
 }
 
-async function createOrUpdateProductFromRow(row: RowRecord): Promise<void> {
+async function createOrUpdateProductFromRow(row: RowRecord, fixedLastSyncedAt: Date): Promise<void> {
   const lower = buildLowerKeyMap(row);
 
   const gruppeIdRaw = pickFirst(lower, headerAliases.gruppeId);
@@ -113,8 +113,6 @@ async function createOrUpdateProductFromRow(row: RowRecord): Promise<void> {
     return;
   }
 
-  const now = new Date();
-
   const existing = await prisma.product.findFirst({ where: { SKU: sku } });
   if (existing) {
     await prisma.product.update({
@@ -135,7 +133,7 @@ async function createOrUpdateProductFromRow(row: RowRecord): Promise<void> {
         listOfAdvantages,
         metaTitle,
         metaDescription,
-        lastSyncedAt: now,
+        lastSyncedAt: fixedLastSyncedAt,
       },
     });
     console.log(`[stage-1] Updated product SKU=${sku}`);
@@ -157,7 +155,7 @@ async function createOrUpdateProductFromRow(row: RowRecord): Promise<void> {
         listOfAdvantages,
         metaTitle,
         metaDescription,
-        lastSyncedAt: now,
+        lastSyncedAt: fixedLastSyncedAt,
       },
     });
     console.log(`[stage-1] Created product SKU=${sku}`);
@@ -178,10 +176,11 @@ export async function parseLatestDownloadedFile(): Promise<void> {
   const sheet = workbook.Sheets[firstSheetName];
   const rows = XLSX.utils.sheet_to_json<RowRecord>(sheet, { defval: null });
 
+  const fixedLastSyncedAt = new Date();
   let processed = 0;
   for (const row of rows) {
     try {
-      await createOrUpdateProductFromRow(row);
+      await createOrUpdateProductFromRow(row, fixedLastSyncedAt);
       processed += 1;
     } catch (err) {
       console.error(`[stage-1] Error processing row`, err);
