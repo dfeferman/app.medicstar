@@ -10,7 +10,7 @@ mutation ProductCreate($input: ProductCreateInput!) {
     product {
       id
       title
-      variants(first: 1) { nodes { id sku } }
+      variants(first: 1) { nodes { id title } }
     }
     userErrors { field message }
   }
@@ -20,6 +20,15 @@ const VARIANTS_BULK_UPDATE_MUTATION = `
 mutation VariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
   productVariantsBulkUpdate(productId: $productId, variants: $variants) {
     product { id }
+    userErrors { field message }
+  }
+}`;
+
+const VARIANTS_BULK_CREATE_MUTATION = `
+mutation VariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+  productVariantsBulkCreate(productId: $productId, variants: $variants) {
+    product { id }
+    productVariants { id }
     userErrors { field message }
   }
 }`;
@@ -140,6 +149,16 @@ export async function createShopifyProducts(): Promise<void> {
       collection2: true,
       collection3: true,
       collection4: true,
+      variants: {
+        select: {
+          id: true,
+          title: true, // variant value from "Varianten"
+          optionName: true,
+          SKU: true,
+          priceNetto: true,
+          quantity: true,
+        },
+      },
     },
   });
 
@@ -152,16 +171,120 @@ export async function createShopifyProducts(): Promise<void> {
 
   for (const p of products) {
     try {
-      const shopifyId = await createShopifyProduct(graphql, p);
-      if (shopifyId) {
-        await prisma.product.update({
-          where: { id: p.id },
-          data: { shopifyProductId: shopifyId, lastSyncedAt: new Date() },
-        });
-        console.log(`[stage-2] Created product in Shopify id=${shopifyId} (local id=${p.id})`);
-      } else {
-        console.warn(`[stage-2] Skipped local product id=${p.id} due to errors.`);
+      const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
+      if (!hasVariants) {
+        const shopifyId = await createShopifyProduct(graphql, p);
+        if (shopifyId) {
+          await prisma.product.update({
+            where: { id: p.id },
+            data: { shopifyProductId: shopifyId, lastSyncedAt: new Date() },
+          });
+          console.log(`[stage-2] Created product in Shopify id=${shopifyId} (local id=${p.id})`);
+        } else {
+          console.warn(`[stage-2] Skipped local product id=${p.id} due to errors.`);
+        }
+        continue;
       }
+
+      // Build tags and options
+      const tags = [p.collection1, p.collection2, p.collection3, p.collection4]
+        .filter((t) => !!t && String(t).trim().length > 0) as string[];
+      const optionName = p.variants[0].optionName || "Variante";
+      const variantValues = Array.from(new Set(p.variants.map((v) => v.title).filter(Boolean)));
+
+      // 1) Create product with productOptions
+      const productCreateVariables = {
+        input: {
+          title: p.title,
+          descriptionHtml: p.description ?? "",
+          vendor: p.vendor,
+          tags,
+          productOptions: [
+            {
+              name: optionName,
+              values: variantValues.map((name) => ({ name })),
+            },
+          ],
+        },
+      };
+
+      const createResp = (await graphql(PRODUCT_CREATE_MUTATION, { variables: productCreateVariables })) as any;
+      const createResult: any = typeof createResp?.json === "function" ? await createResp.json() : createResp;
+      const createErrors = createResult?.data?.productCreate?.userErrors ?? [];
+      if (createErrors.length > 0) {
+        console.error("[stage-2] productCreate errors:", createErrors);
+        continue;
+      }
+      const createdProduct = createResult?.data?.productCreate?.product;
+      const createdProductId: string | undefined = createdProduct?.id;
+      const defaultVariantId: string | undefined = createdProduct?.variants?.nodes?.[0]?.id;
+      if (!createdProductId) {
+        console.warn(`[stage-2] No productId returned for local id=${p.id}`);
+        continue;
+      }
+
+      // 2) Set SKU/price on default variant from the first DB variant
+      const defaultDbVariant = p.variants[0];
+      if (defaultVariantId && defaultDbVariant) {
+        const locationId = process.env.SHOPIFY_LOCATION_ID;
+        const updateResp = (await graphql(VARIANTS_BULK_UPDATE_MUTATION, {
+          variables: {
+            productId: createdProductId,
+            variants: [
+              {
+                id: defaultVariantId,
+                price: String(defaultDbVariant.priceNetto),
+                inventoryItem: { sku: defaultDbVariant.SKU },
+                ...(locationId
+                  ? {
+                      inventoryQuantities: [
+                        { locationId, availableQuantity: defaultDbVariant.quantity },
+                      ],
+                    }
+                  : {}),
+              },
+            ],
+          },
+        })) as any;
+        const updateResult: any = typeof updateResp?.json === "function" ? await updateResp.json() : updateResp;
+        const updErrors = updateResult?.data?.productVariantsBulkUpdate?.userErrors ?? [];
+        if (updErrors.length > 0) {
+          console.warn("[stage-2] productVariantsBulkUpdate errors:", updErrors);
+        }
+      }
+
+      // 3) Create the remaining variants
+      const rest = p.variants.slice(1);
+      if (rest.length > 0) {
+        const locationId = process.env.SHOPIFY_LOCATION_ID;
+        const variantsPayload = rest.map((v) => ({
+          optionValues: [{ name: v.title, optionName }],
+          price: String(v.priceNetto),
+          inventoryItem: { sku: v.SKU },
+          ...(locationId
+            ? {
+                inventoryQuantities: [
+                  { locationId, availableQuantity: v.quantity },
+                ],
+              }
+            : {}),
+        }));
+
+        const createVarResp = (await graphql(VARIANTS_BULK_CREATE_MUTATION, {
+          variables: { productId: createdProductId, variants: variantsPayload },
+        })) as any;
+        const createVarResult: any = typeof createVarResp?.json === "function" ? await createVarResp.json() : createVarResp;
+        const varErrors = createVarResult?.data?.productVariantsBulkCreate?.userErrors ?? [];
+        if (varErrors.length > 0) {
+          console.warn("[stage-2] productVariantsBulkCreate errors:", varErrors);
+        }
+      }
+
+      await prisma.product.update({
+        where: { id: p.id },
+        data: { shopifyProductId: createdProductId, lastSyncedAt: new Date() },
+      });
+      console.log(`[stage-2] Created product with variants in Shopify id=${createdProductId} (local id=${p.id})`);
     } catch (err) {
       console.error(`[stage-2] Failed to create product for local id=${p.id}`, err);
     }

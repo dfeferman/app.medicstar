@@ -23,6 +23,8 @@ const headerAliases: Record<string, string[]> = {
   listOfAdvantages: ["listofadvantages"],
   metaTitle: ["meta-titel"],
   metaDescription: ["meta beschreibung"],
+  optionName: ["ausprägungsauswahl"],
+  optionValue: ["varianten"],
 };
 
 function getLatestXlsxFile(downloadsAbsolutePath: string): string | null {
@@ -80,6 +82,31 @@ function toPriceStringOrZero(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0.00";
   return n.toFixed(2);
+}
+
+function toIntegerOrNull(value: unknown): number | null {
+  const s = toStringOrEmpty(value);
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function deriveBaseTitle(fullTitle: string, variantValue: string): string {
+  if (!fullTitle) return fullTitle;
+  if (!variantValue) return fullTitle;
+  const valueTrim = variantValue.trim();
+  if (!valueTrim) return fullTitle;
+  const trailingRegex = new RegExp(`\\s+${escapeRegExp(valueTrim)}$`, "i");
+  let base = fullTitle.replace(trailingRegex, "");
+  if (base === fullTitle) {
+    const anywhereRegex = new RegExp(`\\b${escapeRegExp(valueTrim)}\\b`, "i");
+    base = fullTitle.replace(anywhereRegex, "");
+  }
+  return base.replace(/\s{2,}/g, " ").trim();
 }
 
 async function createOrUpdateProductFromRow(row: RowRecord, fixedLastSyncedAt: Date): Promise<void> {
@@ -162,6 +189,140 @@ async function createOrUpdateProductFromRow(row: RowRecord, fixedLastSyncedAt: D
   }
 }
 
+async function processVariantGroup(rows: RowRecord[], fixedLastSyncedAt: Date): Promise<void> {
+  if (rows.length === 0) return;
+  const firstLower = buildLowerKeyMap(rows[0]);
+  const gruppeIdVal = pickFirst(firstLower, headerAliases.gruppeId);
+  const gruppeIdStr = toStringOrEmpty(gruppeIdVal);
+  const groupId = toIntegerOrNull(gruppeIdStr);
+  if (groupId === null) return;
+
+  const optionName = toStringOrEmpty(pickFirst(firstLower, headerAliases.optionName));
+
+  const firstTitle = toStringOrEmpty(pickFirst(firstLower, headerAliases.title));
+  const firstVariantValue = toStringOrEmpty(pickFirst(firstLower, headerAliases.optionValue));
+  const baseTitle = deriveBaseTitle(firstTitle, firstVariantValue);
+
+  const vendor = toStringOrEmpty(pickFirst(firstLower, headerAliases.vendor));
+  const description = toNullableString(pickFirst(firstLower, headerAliases.description));
+  const deliveryTime = toStringOrEmpty(pickFirst(firstLower, headerAliases.deliveryTime));
+  const collection1 = toStringOrEmpty(pickFirst(firstLower, headerAliases.collection1));
+  const collection2 = toNullableString(pickFirst(firstLower, headerAliases.collection2));
+  const collection3 = toNullableString(pickFirst(firstLower, headerAliases.collection3));
+  const collection4 = toNullableString(pickFirst(firstLower, headerAliases.collection4));
+  const listOfAdvantages = toStringOrEmpty(pickFirst(firstLower, headerAliases.listOfAdvantages));
+  const metaTitle = toNullableString(pickFirst(firstLower, headerAliases.metaTitle));
+  const metaDescription = toNullableString(pickFirst(firstLower, headerAliases.metaDescription));
+
+  // Aggregate quantity across variants for the parent
+  const totalQuantity = rows.reduce((sum, r) => {
+    const lowerMap = buildLowerKeyMap(r);
+    return sum + toIntegerOrZero(pickFirst(lowerMap, headerAliases.quantity));
+  }, 0);
+  const firstPrice = toPriceStringOrZero(pickFirst(firstLower, headerAliases.priceNetto));
+
+  // Upsert parent product by groupId
+  const parentSku = `group-${groupId}-parent`;
+  const existingParent = await prisma.product.findFirst({ where: { groupId } });
+  let parentId: number;
+  if (existingParent) {
+    const updated = await prisma.product.update({
+      where: { id: existingParent.id },
+      data: {
+        title: baseTitle || existingParent.title,
+        vendor,
+        SKU: parentSku,
+        groupId: groupId,
+        description,
+        priceNetto: firstPrice,
+        quantity: totalQuantity,
+        deliveryTime,
+        collection1,
+        collection2,
+        collection3,
+        collection4,
+        listOfAdvantages,
+        metaTitle,
+        metaDescription,
+        lastSyncedAt: fixedLastSyncedAt,
+      },
+    });
+    parentId = updated.id;
+    console.log(`[stage-1] Updated parent product for groupId=${groupId}`);
+  } else {
+    const created = await prisma.product.create({
+      data: {
+        title: baseTitle || "",
+        vendor,
+        SKU: parentSku,
+        groupId: groupId,
+        description,
+        priceNetto: firstPrice,
+        quantity: totalQuantity,
+        deliveryTime,
+        collection1,
+        collection2,
+        collection3,
+        collection4,
+        listOfAdvantages,
+        metaTitle,
+        metaDescription,
+        lastSyncedAt: fixedLastSyncedAt,
+      },
+    });
+    parentId = created.id;
+    console.log(`[stage-1] Created parent product for groupId=${groupId}`);
+  }
+
+  // Upsert variants by SKU under the parent
+  for (const row of rows) {
+    const lower = buildLowerKeyMap(row);
+    const rowTitle = toStringOrEmpty(pickFirst(lower, headerAliases.title));
+    const variantValue = toStringOrEmpty(pickFirst(lower, headerAliases.optionValue));
+    // Variant title must be the value from Varianten column
+    const variantTitle = variantValue || rowTitle || baseTitle;
+    const sku = toStringOrEmpty(pickFirst(lower, headerAliases.sku));
+    if (!sku) {
+      console.warn(`[stage-1] Skipping variant with empty SKU in groupId=${groupId}`);
+      continue;
+    }
+    const priceNetto = toPriceStringOrZero(pickFirst(lower, headerAliases.priceNetto));
+    const quantity = toIntegerOrZero(pickFirst(lower, headerAliases.quantity));
+    const vListOfAdvantages = toStringOrEmpty(pickFirst(lower, headerAliases.listOfAdvantages));
+
+    const existingVariant = await prisma.productVariant.findFirst({ where: { SKU: sku } });
+    if (existingVariant) {
+      await prisma.productVariant.update({
+        where: { id: existingVariant.id },
+        data: {
+          title: variantTitle,
+          SKU: sku,
+          groupId: groupId,
+          priceNetto,
+          quantity,
+          productId: parentId,
+          lastSyncedAt: fixedLastSyncedAt,
+        },
+      });
+      console.log(`[stage-1] Updated variant SKU=${sku} for groupId=${groupId}`);
+    } else {
+      await prisma.productVariant.create({
+        data: {
+          title: variantTitle,
+          optionName,
+          SKU: sku,
+          groupId,
+          priceNetto,
+          quantity,
+          productId: parentId,
+          lastSyncedAt: fixedLastSyncedAt,
+        },
+      });
+      console.log(`[stage-1] Created variant SKU=${sku} for groupId=${groupId}`);
+    }
+  }
+}
+
 export async function parseLatestDownloadedFile(): Promise<void> {
   const downloadsPath = path.resolve(process.cwd(), DOWNLOADS_DIR);
   const latest = getLatestXlsxFile(downloadsPath);
@@ -177,16 +338,46 @@ export async function parseLatestDownloadedFile(): Promise<void> {
   const rows = XLSX.utils.sheet_to_json<RowRecord>(sheet, { defval: null });
 
   const fixedLastSyncedAt = new Date();
-  let processed = 0;
+  const groups = new Map<number, RowRecord[]>();
+  const standalone: RowRecord[] = [];
+
   for (const row of rows) {
+    const lower = buildLowerKeyMap(row);
+    const gruppeIdRaw = pickFirst(lower, headerAliases.gruppeId);
+    const gruppeIdStr = toStringOrEmpty(gruppeIdRaw);
+    const maybeId = toIntegerOrNull(gruppeIdStr);
+    if (gruppeIdStr === "" || maybeId === null) {
+      standalone.push(row);
+    } else {
+      const gid = maybeId;
+      const list = groups.get(gid) ?? [];
+      list.push(row);
+      groups.set(gid, list);
+    }
+  }
+
+  let processed = 0;
+  // First, process standalone (no variants)
+  for (const row of standalone) {
     try {
       await createOrUpdateProductFromRow(row, fixedLastSyncedAt);
       processed += 1;
     } catch (err) {
-      console.error(`[stage-1] Error processing row`, err);
+      console.error(`[stage-1] Error processing standalone row`, err);
     }
   }
-  console.log(`[stage-1] Finished. Processed ${processed} rows.`);
+
+  // Then process variant groups
+  for (const [gid, list] of groups.entries()) {
+    try {
+      await processVariantGroup(list, fixedLastSyncedAt);
+      processed += list.length;
+    } catch (err) {
+      console.error(`[stage-1] Error processing variant group ${gid}`, err);
+    }
+  }
+
+  console.log(`[stage-1] Finished. Processed ${processed} rows across ${standalone.length} standalone and ${groups.size} variant group(s).`);
 }
 
 // Execute when run directly
