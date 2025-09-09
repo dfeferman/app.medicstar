@@ -40,3 +40,56 @@ model Contact {
 
   @@index([businessCenterContactNo])
 }
+
+model Product {
+  id                                  Int       @id @default(autoincrement())
+  shopifyProductId                    String?
+  title                               String
+  vendor                              String
+  SKU                                 String
+  groupId                             Int
+  description                         String?
+  priceNetto                          Decimal  @db.Decimal(10, 2)
+  quantity                            Int
+  deliveryTime                        String
+  collection1                         String
+  collection2                         String?
+  collection3                         String?
+  collection4                         String?
+  listOfAdvantages                    String?
+  metaTitle                           String?
+  metaDescription                     String?
+  variants                            ProductVariant[]
+  lastSyncedAt                        DateTime
+
+  @@index([shopifyProductId], name: "product_shopifyId")
+  @@index([groupId], name: "product_groupId")
+  @@index([SKU], name: "product_SKU")
+}
+
+model ProductVariant {
+  id                                  Int       @id @default(autoincrement())
+  shopifyVariantId                    String?
+  title                               String
+  vendor                              String
+  SKU                                 String
+  groupId                             Int
+  description                         String?
+  priceNetto                          Decimal  @db.Decimal(10, 2)
+  quantity                            Int
+  deliveryTime                        String
+  collection1                         String?
+  collection2                         String?
+  collection3                         String?
+  collection4                         String?
+  listOfAdvantages                    String?
+  metaTitle                           String?
+  metaDescription                     String?
+  productId                           Int
+  product                             Product @relation(fields: [productId], references: [id])
+  lastSyncedAt                        DateTime
+
+  @@index([shopifyVariantId], name: "productVariant_shopifyId")
+  @@index([groupId], name: "productVariant_groupId")
+  @@index([SKU], name: "productVariant_SKU")
+}
