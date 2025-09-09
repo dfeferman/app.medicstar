@@ -1,8 +1,7 @@
 import prisma from "../../../db.server";
 import { unauthenticated } from "../../../shopify.server";
 
-// TODO: replace with value persisted in DB
-const SHOP_DOMAIN = "medicstar-app-dev.myshopify.com";
+const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
 
 const PRODUCT_CREATE_MUTATION = `
 mutation ProductCreate($input: ProductCreateInput!) {
@@ -10,7 +9,7 @@ mutation ProductCreate($input: ProductCreateInput!) {
     product {
       id
       title
-      variants(first: 1) { nodes { id title } }
+      variants(first: 1) { nodes { id title inventoryItem { id } } }
     }
     userErrors { field message }
   }
@@ -28,7 +27,15 @@ const VARIANTS_BULK_CREATE_MUTATION = `
 mutation VariantsBulkCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
   productVariantsBulkCreate(productId: $productId, variants: $variants) {
     product { id }
-    productVariants { id }
+    productVariants { id inventoryItem { id } }
+    userErrors { field message }
+  }
+}`;
+
+const INVENTORY_SET_QUANTITIES = `
+mutation InventorySetQuantities($input: InventorySetQuantitiesInput!) {
+  inventorySetQuantities(input: $input) {
+    inventoryAdjustmentGroup { createdAt }
     userErrors { field message }
   }
 }`;
@@ -47,6 +54,7 @@ async function createShopifyProduct(
     description: string | null;
     SKU: string;
     priceNetto: any;
+    quantity: number;
     collection1: string;
     collection2: string | null;
     collection3: string | null;
@@ -86,6 +94,7 @@ async function createShopifyProduct(
 
   // Update the default variant with SKU and price via bulk update API
   const defaultVariantId: string | undefined = createdProduct?.variants?.nodes?.[0]?.id;
+  const defaultInventoryItemId: string | undefined = createdProduct?.variants?.nodes?.[0]?.inventoryItem?.id;
   if (defaultVariantId && createdId) {
     try {
       const locationId = process.env.SHOPIFY_LOCATION_ID;
@@ -98,17 +107,8 @@ async function createShopifyProduct(
               price: String(product.priceNetto),
               inventoryItem: {
                 sku: product.SKU,
+                tracked: true,
               },
-              ...(locationId
-                ? {
-                    inventoryQuantities: [
-                      {
-                        locationId,
-                        availableQuantity: 0,
-                      },
-                    ],
-                  }
-                : {}),
             },
           ],
         },
@@ -126,12 +126,38 @@ async function createShopifyProduct(
     }
   }
 
+  // Set quantity for the default variant using inventorySetQuantities
+  try {
+    const locationId = process.env.SHOPIFY_LOCATION_ID;
+    if (locationId && defaultInventoryItemId) {
+      const invResp = (await graphql(INVENTORY_SET_QUANTITIES, {
+        variables: {
+          input: {
+            name: "available",
+            reason: "correction",
+            referenceDocumentUri: `app://sync/${product.id}`,
+            ignoreCompareQuantity: true,
+            quantities: [
+              { inventoryItemId: defaultInventoryItemId, locationId, quantity: product.quantity },
+            ],
+          },
+        },
+      })) as any;
+      const invRes: any = typeof invResp?.json === "function" ? await invResp.json() : invResp;
+      const invErrors = invRes?.data?.inventorySetQuantities?.userErrors ?? [];
+      if (invErrors.length > 0) {
+        console.warn("[stage-2] inventorySetQuantities errors (single):", invErrors);
+      }
+    }
+  } catch (err) {
+    console.warn("[stage-2] Failed inventorySetQuantities for default variant", err);
+  }
+
   return createdId ?? null;
 }
 
 export async function createShopifyProducts(): Promise<void> {
-  // const { graphql } = (await unauthenticated.admin(shop.domain)).admin;
-  const { graphql } = (await unauthenticated.admin(SHOP_DOMAIN)).admin;
+  const { graphql } = (await unauthenticated.admin(SHOP_DOMAIN!)).admin;
 
   const products = await prisma.product.findMany({
     where: { shopifyProductId: null },
@@ -234,14 +260,7 @@ export async function createShopifyProducts(): Promise<void> {
               {
                 id: defaultVariantId,
                 price: String(defaultDbVariant.priceNetto),
-                inventoryItem: { sku: defaultDbVariant.SKU },
-                ...(locationId
-                  ? {
-                      inventoryQuantities: [
-                        { locationId, availableQuantity: defaultDbVariant.quantity },
-                      ],
-                    }
-                  : {}),
+                inventoryItem: { sku: defaultDbVariant.SKU, tracked: true },
               },
             ],
           },
@@ -251,23 +270,42 @@ export async function createShopifyProducts(): Promise<void> {
         if (updErrors.length > 0) {
           console.warn("[stage-2] productVariantsBulkUpdate errors:", updErrors);
         }
+
+        // Set quantity using inventorySetQuantities for default variant
+        try {
+          const defaultInvItemId = createdProduct?.variants?.nodes?.[0]?.inventoryItem?.id;
+          if (locationId && defaultInvItemId) {
+            const invResp = (await graphql(INVENTORY_SET_QUANTITIES, {
+              variables: {
+                input: {
+                  name: "available",
+                  reason: "correction",
+                  referenceDocumentUri: `app://sync/${p.id}`,
+                  ignoreCompareQuantity: true,
+                  quantities: [
+                    { inventoryItemId: defaultInvItemId, locationId, quantity: defaultDbVariant.quantity },
+                  ],
+                },
+              },
+            })) as any;
+            const invRes: any = typeof invResp?.json === "function" ? await invResp.json() : invResp;
+            const invErrors = invRes?.data?.inventorySetQuantities?.userErrors ?? [];
+            if (invErrors.length > 0) {
+              console.warn("[stage-2] inventorySetQuantities errors (default):", invErrors);
+            }
+          }
+        } catch (err) {
+          console.warn("[stage-2] Failed inventorySetQuantities for default variant", err);
+        }
       }
 
       // 3) Create the remaining variants
       const rest = p.variants.slice(1);
       if (rest.length > 0) {
-        const locationId = process.env.SHOPIFY_LOCATION_ID;
         const variantsPayload = rest.map((v) => ({
           optionValues: [{ name: v.title, optionName }],
           price: String(v.priceNetto),
-          inventoryItem: { sku: v.SKU },
-          ...(locationId
-            ? {
-                inventoryQuantities: [
-                  { locationId, availableQuantity: v.quantity },
-                ],
-              }
-            : {}),
+          inventoryItem: { sku: v.SKU, tracked: true },
         }));
 
         const createVarResp = (await graphql(VARIANTS_BULK_CREATE_MUTATION, {
@@ -277,6 +315,42 @@ export async function createShopifyProducts(): Promise<void> {
         const varErrors = createVarResult?.data?.productVariantsBulkCreate?.userErrors ?? [];
         if (varErrors.length > 0) {
           console.warn("[stage-2] productVariantsBulkCreate errors:", varErrors);
+        }
+
+        // Set quantities for newly created variants via inventorySetQuantities (bulk)
+        try {
+          const locationId2 = process.env.SHOPIFY_LOCATION_ID;
+          if (locationId2) {
+            const createdVariants = createVarResult?.data?.productVariantsBulkCreate?.productVariants ?? [];
+            const quantities = createdVariants
+              .map((cv: any, idx: number) => {
+                const invId = cv?.inventoryItem?.id;
+                const dbVariant = rest[idx];
+                if (!invId || !dbVariant) return null;
+                return { inventoryItemId: invId, locationId: locationId2, quantity: dbVariant.quantity };
+              })
+              .filter(Boolean);
+            if (quantities.length > 0) {
+              const invResp = (await graphql(INVENTORY_SET_QUANTITIES, {
+                variables: {
+                  input: {
+                    name: "available",
+                    reason: "correction",
+                    referenceDocumentUri: `app://sync/${p.id}`,
+                    ignoreCompareQuantity: true,
+                    quantities,
+                  },
+                },
+              })) as any;
+              const invRes: any = typeof invResp?.json === "function" ? await invResp.json() : invResp;
+              const invErrors = invRes?.data?.inventorySetQuantities?.userErrors ?? [];
+              if (invErrors.length > 0) {
+                console.warn("[stage-2] inventorySetQuantities errors (bulk)", invErrors);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[stage-2] Failed inventorySetQuantities for created variants", err);
         }
       }
 
