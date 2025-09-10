@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import XLSX from "xlsx";
+import { Decimal } from "@prisma/client/runtime/library";
 import prisma from "../../../db.server";
 
 type RowRecord = Record<string, unknown>;
@@ -84,6 +85,22 @@ function toPriceStringOrZero(value: unknown): string {
   return n.toFixed(2);
 }
 
+function normalizePriceForComparison(price: string | number | Decimal): string {
+  if (typeof price === 'number') {
+    return price.toFixed(2);
+  }
+  if (price instanceof Decimal) {
+    return price.toFixed(2);
+  }
+  const num = Number(price);
+  if (!Number.isFinite(num)) return "0.00";
+  return num.toFixed(2);
+}
+
+function arePricesEqual(price1: string | number | Decimal, price2: string | number | Decimal): boolean {
+  return normalizePriceForComparison(price1) === normalizePriceForComparison(price2);
+}
+
 function toIntegerOrNull(value: unknown): number | null {
   const s = toStringOrEmpty(value);
   if (!s) return null;
@@ -142,28 +159,53 @@ async function createOrUpdateProductFromRow(row: RowRecord, fixedLastSyncedAt: D
 
   const existing = await prisma.product.findFirst({ where: { SKU: sku } });
   if (existing) {
-    await prisma.product.update({
-      where: { id: existing.id },
-      data: {
-        title,
-        vendor,
-        SKU: sku,
-        groupId: 0,
-        description,
-        priceNetto,
-        quantity,
-        deliveryTime,
-        collection1,
-        collection2,
-        collection3,
-        collection4,
-        listOfAdvantages,
-        metaTitle,
-        metaDescription,
-        lastSyncedAt: fixedLastSyncedAt,
-      },
-    });
-    console.log(`[stage-1] Updated product SKU=${sku}`);
+    // Check if any fields have changed and log the differences
+    const changes: string[] = [];
+
+    if (existing.title !== title) changes.push(`title: "${existing.title}" → "${title}"`);
+    if (existing.vendor !== vendor) changes.push(`vendor: "${existing.vendor}" → "${vendor}"`);
+    if (existing.description !== description) changes.push(`description: "${existing.description}" → "${description}"`);
+    if (!arePricesEqual(existing.priceNetto, priceNetto)) changes.push(`priceNetto: "${existing.priceNetto}" → "${priceNetto}"`);
+    if (existing.quantity !== quantity) changes.push(`quantity: ${existing.quantity} → ${quantity}`);
+    if (existing.deliveryTime !== deliveryTime) changes.push(`deliveryTime: "${existing.deliveryTime}" → "${deliveryTime}"`);
+    if (existing.collection1 !== collection1) changes.push(`collection1: "${existing.collection1}" → "${collection1}"`);
+    if (existing.collection2 !== collection2) changes.push(`collection2: "${existing.collection2}" → "${collection2}"`);
+    if (existing.collection3 !== collection3) changes.push(`collection3: "${existing.collection3}" → "${collection3}"`);
+    if (existing.collection4 !== collection4) changes.push(`collection4: "${existing.collection4}" → "${collection4}"`);
+    if (existing.listOfAdvantages !== listOfAdvantages) changes.push(`listOfAdvantages: "${existing.listOfAdvantages}" → "${listOfAdvantages}"`);
+    if (existing.metaTitle !== metaTitle) changes.push(`metaTitle: "${existing.metaTitle}" → "${metaTitle}"`);
+    if (existing.metaDescription !== metaDescription) changes.push(`metaDescription: "${existing.metaDescription}" → "${metaDescription}"`);
+
+    const hasChanges = changes.length > 0;
+
+    if (hasChanges) {
+      console.log(`[stage-1] Changes detected for product SKU=${sku}:`);
+      changes.forEach(change => console.log(`  - ${change}`));
+      await prisma.product.update({
+        where: { id: existing.id },
+        data: {
+          title,
+          vendor,
+          SKU: sku,
+          groupId: 0,
+          description,
+          priceNetto: new Decimal(priceNetto),
+          quantity,
+          deliveryTime,
+          collection1,
+          collection2,
+          collection3,
+          collection4,
+          listOfAdvantages,
+          metaTitle,
+          metaDescription,
+          lastSyncedAt: fixedLastSyncedAt,
+        },
+      });
+      console.log(`[stage-1] Updated product SKU=${sku} (changes detected)`);
+    } else {
+      console.log(`[stage-1] Product SKU=${sku} unchanged, skipping update`);
+    }
   } else {
     await prisma.product.create({
       data: {
@@ -172,7 +214,7 @@ async function createOrUpdateProductFromRow(row: RowRecord, fixedLastSyncedAt: D
         SKU: sku,
         groupId: 0,
         description,
-        priceNetto,
+        priceNetto: new Decimal(priceNetto),
         quantity,
         deliveryTime,
         collection1,
@@ -221,34 +263,62 @@ async function processVariantGroup(rows: RowRecord[], fixedLastSyncedAt: Date): 
   }, 0);
   const firstPrice = toPriceStringOrZero(pickFirst(firstLower, headerAliases.priceNetto));
 
-  // Upsert parent product by groupId
-  const parentSku = `group-${groupId}-parent`;
-  const existingParent = await prisma.product.findFirst({ where: { groupId } });
+  // Upsert parent product by groupId - use the Produktnummer from the first row as the parent SKU
+  const firstRowSku = toStringOrEmpty(pickFirst(firstLower, headerAliases.sku));
+  const parentSku = firstRowSku; // Use actual Produktnummer as parent SKU
+  const existingParent = await prisma.product.findFirst({ where: { SKU: parentSku } });
   let parentId: number;
   if (existingParent) {
-    const updated = await prisma.product.update({
-      where: { id: existingParent.id },
-      data: {
-        title: baseTitle || existingParent.title,
-        vendor,
-        SKU: parentSku,
-        groupId: groupId,
-        description,
-        priceNetto: firstPrice,
-        quantity: totalQuantity,
-        deliveryTime,
-        collection1,
-        collection2,
-        collection3,
-        collection4,
-        listOfAdvantages,
-        metaTitle,
-        metaDescription,
-        lastSyncedAt: fixedLastSyncedAt,
-      },
-    });
-    parentId = updated.id;
-    console.log(`[stage-1] Updated parent product for groupId=${groupId}`);
+    // Check if any fields have changed for parent product and log the differences
+    const finalTitle = baseTitle || existingParent.title;
+    const changes: string[] = [];
+
+    if (existingParent.title !== finalTitle) changes.push(`title: "${existingParent.title}" → "${finalTitle}"`);
+    if (existingParent.vendor !== vendor) changes.push(`vendor: "${existingParent.vendor}" → "${vendor}"`);
+    if (existingParent.description !== description) changes.push(`description: "${existingParent.description}" → "${description}"`);
+    if (!arePricesEqual(existingParent.priceNetto, firstPrice)) changes.push(`priceNetto: "${existingParent.priceNetto}" → "${firstPrice}"`);
+    if (existingParent.quantity !== totalQuantity) changes.push(`quantity: ${existingParent.quantity} → ${totalQuantity}`);
+    if (existingParent.deliveryTime !== deliveryTime) changes.push(`deliveryTime: "${existingParent.deliveryTime}" → "${deliveryTime}"`);
+    if (existingParent.collection1 !== collection1) changes.push(`collection1: "${existingParent.collection1}" → "${collection1}"`);
+    if (existingParent.collection2 !== collection2) changes.push(`collection2: "${existingParent.collection2}" → "${collection2}"`);
+    if (existingParent.collection3 !== collection3) changes.push(`collection3: "${existingParent.collection3}" → "${collection3}"`);
+    if (existingParent.collection4 !== collection4) changes.push(`collection4: "${existingParent.collection4}" → "${collection4}"`);
+    if (existingParent.listOfAdvantages !== listOfAdvantages) changes.push(`listOfAdvantages: "${existingParent.listOfAdvantages}" → "${listOfAdvantages}"`);
+    if (existingParent.metaTitle !== metaTitle) changes.push(`metaTitle: "${existingParent.metaTitle}" → "${metaTitle}"`);
+    if (existingParent.metaDescription !== metaDescription) changes.push(`metaDescription: "${existingParent.metaDescription}" → "${metaDescription}"`);
+
+    const hasChanges = changes.length > 0;
+
+    if (hasChanges) {
+      console.log(`[stage-1] Changes detected for parent product SKU=${parentSku} (groupId=${groupId}):`);
+      changes.forEach(change => console.log(`  - ${change}`));
+      const updated = await prisma.product.update({
+        where: { id: existingParent.id },
+        data: {
+          title: finalTitle,
+          vendor,
+          SKU: parentSku,
+          groupId: groupId,
+          description,
+          priceNetto: new Decimal(firstPrice),
+          quantity: totalQuantity,
+          deliveryTime,
+          collection1,
+          collection2,
+          collection3,
+          collection4,
+          listOfAdvantages,
+          metaTitle,
+          metaDescription,
+          lastSyncedAt: fixedLastSyncedAt,
+        },
+      });
+      parentId = updated.id;
+      console.log(`[stage-1] Updated parent product for groupId=${groupId} (changes detected)`);
+    } else {
+      parentId = existingParent.id;
+      console.log(`[stage-1] Parent product for groupId=${groupId} unchanged, skipping update`);
+    }
   } else {
     const created = await prisma.product.create({
       data: {
@@ -257,7 +327,7 @@ async function processVariantGroup(rows: RowRecord[], fixedLastSyncedAt: Date): 
         SKU: parentSku,
         groupId: groupId,
         description,
-        priceNetto: firstPrice,
+        priceNetto: new Decimal(firstPrice),
         quantity: totalQuantity,
         deliveryTime,
         collection1,
@@ -290,21 +360,45 @@ async function processVariantGroup(rows: RowRecord[], fixedLastSyncedAt: Date): 
     const quantity = toIntegerOrZero(pickFirst(lower, headerAliases.quantity));
     const vListOfAdvantages = toStringOrEmpty(pickFirst(lower, headerAliases.listOfAdvantages));
 
-    const existingVariant = await prisma.productVariant.findFirst({ where: { SKU: sku } });
+    const existingVariant: any = await prisma.productVariant.findFirst({
+      where: {
+        SKU: sku,
+        groupId: groupId
+      }
+    });
     if (existingVariant) {
-      await prisma.productVariant.update({
-        where: { id: existingVariant.id },
-        data: {
-          title: variantTitle,
-          SKU: sku,
-          groupId: groupId,
-          priceNetto,
-          quantity,
-          productId: parentId,
-          lastSyncedAt: fixedLastSyncedAt,
-        },
-      });
-      console.log(`[stage-1] Updated variant SKU=${sku} for groupId=${groupId}`);
+      // Check if any fields have changed for variant and log the differences
+      const changes: string[] = [];
+
+      if (existingVariant.title !== variantTitle) changes.push(`title: "${existingVariant.title}" → "${variantTitle}"`);
+      if (existingVariant.optionName !== optionName) changes.push(`optionName: "${existingVariant.optionName}" → "${optionName}"`);
+      if (existingVariant.groupId !== groupId) changes.push(`groupId: ${existingVariant.groupId} → ${groupId}`);
+      if (!arePricesEqual(existingVariant.priceNetto, priceNetto)) changes.push(`priceNetto: "${existingVariant.priceNetto}" → "${priceNetto}"`);
+      if (existingVariant.quantity !== quantity) changes.push(`quantity: ${existingVariant.quantity} → ${quantity}`);
+      if (existingVariant.productId !== parentId) changes.push(`productId: ${existingVariant.productId} → ${parentId}`);
+
+      const hasChanges = changes.length > 0;
+
+      if (hasChanges) {
+        console.log(`[stage-1] Changes detected for variant SKU=${sku} (groupId=${groupId}):`);
+        changes.forEach(change => console.log(`  - ${change}`));
+        await prisma.productVariant.update({
+          where: { id: existingVariant.id },
+          data: {
+            title: variantTitle,
+            optionName,
+            SKU: sku,
+            groupId: groupId,
+            priceNetto: new Decimal(priceNetto),
+            quantity,
+            productId: parentId,
+            lastSyncedAt: fixedLastSyncedAt,
+          },
+        });
+        console.log(`[stage-1] Updated variant SKU=${sku} for groupId=${groupId} (changes detected)`);
+      } else {
+        console.log(`[stage-1] Variant SKU=${sku} for groupId=${groupId} unchanged, skipping update`);
+      }
     } else {
       await prisma.productVariant.create({
         data: {
@@ -312,7 +406,7 @@ async function processVariantGroup(rows: RowRecord[], fixedLastSyncedAt: Date): 
           optionName,
           SKU: sku,
           groupId,
-          priceNetto,
+          priceNetto: new Decimal(priceNetto),
           quantity,
           productId: parentId,
           lastSyncedAt: fixedLastSyncedAt,
