@@ -85,3 +85,36 @@ model ProductVariant {
   @@index([groupId], name: "productVariant_groupId")
   @@index([SKU], name: "productVariant_SKU")
 }
+
+model StatusFlag {
+  id Int @id @default(autoincrement())
+  shouldSuspiciousBeUpdated                  Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+}
+
+model SyncProductsTask {
+  id             Int                 @id @default(autoincrement())
+  stage          StatusEnum
+  inProgress     Boolean             @default(false)
+  data           Json                @default("{}")
+  retryCount     Int                 @default(0)
+  error          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([stage], name: "SyncProductsTaskStageIndex")
+  @@index([inProgress, updatedAt], name: "SyncProductsTaskInProgressUpdatedAtIndex")
+}
+
+enum StatusEnum {
+  START
+  DOWNLOAD_FILE
+  PARSE_FILE
+  CREATE_BULK_TASK
+  WAIT_FOR_FINISH
+  DOWNLOAD_RESULT
+  PROCESS_RESULT
+  FINISH
+}
