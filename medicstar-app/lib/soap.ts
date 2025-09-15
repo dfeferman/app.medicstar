@@ -2,16 +2,21 @@ import { parseStringPromise } from "xml2js";
 import crypto from "node:crypto";
 
 export const NS = {
-  ORDER: {
+  ORDER_CREATE: {
     TNS: "http://tempuri.org/InboundCreateInboundOrderIISWebService/",
     NAV: "urn:microsoft-dynamics-nav/xmlports/x5371218",
     ACTION: "http://tempuri.org/InboundCreateInboundOrderIISWebService/InboundCreateInboundOrderIISWebService/CreateSalesOrder"
   },
-   CONTACT: {
+   CONTACT_CREATE: {
     TNS: "http://tempuri.org/InboundCreateContactIISWebService/",
     NAV: "urn:microsoft-dynamics-nav/xmlports/x5371217",
     ACTION: "http://tempuri.org/InboundCreateContactIISWebService/InboundCreateContactIISWebService/CreateContact",
   },
+  CONTACT_READ: {
+    TNS: "http://tempuri.org/ContactIISWebService/",
+    NAV: "urn:microsoft-dynamics-schemas/page/contact",
+    ACTION: "http://tempuri.org/ContactIISWebService/ContactIISWebService/ReadMultiple",
+  }
 } as const;
 
 export const authHeader = (user: string, pass: string): string =>
@@ -71,4 +76,5 @@ export async function parseSoapBody(xml: string): Promise<any> {
   const obj = await parseStringPromise(xml, { explicitArray: false });
   return obj?.["s:Envelope"]?.["s:Body"] ?? obj?.Envelope?.Body ?? obj;
 }
+
 

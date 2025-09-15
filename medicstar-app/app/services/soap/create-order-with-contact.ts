@@ -62,6 +62,7 @@ export type OrderInput = {
 
   paymentTransaction?: PaymentTransaction;
   paymentTransactionCode: string;
+  contactNumber: string;
 };
 
 export type CreateOrderResult = { documentNo?: string };
@@ -69,7 +70,7 @@ export type CreateOrderResult = { documentNo?: string };
 const SHIPPING_AGENT_SERVICE_CODE = "STANDARD";
 const PRODUCT_TYPE = "Item";
 
-export async function createOrder(order: OrderInput): Promise<CreateOrderResult> {
+export async function createOrderWithContact(order: OrderInput): Promise<CreateOrderResult> {
   const formattedOrderDate = formatDate(order.orderDate);
   const formattedOrderTime = formatTime(order.orderDate);
 
@@ -116,6 +117,7 @@ export async function createOrder(order: OrderInput): Promise<CreateOrderResult>
     </x53:Header_General>
 
     <x53:Header_Sell_To_Customer>
+      <x53:Contact_No>${order.contactNumber}</x53:Contact_No>
       <x53:Name>${order.billToCompany}</x53:Name>
       <x53:Name_2>${order.billToCustomerFullName}</x53:Name_2>
       <x53:Address>${order.billToAddress}</x53:Address>
