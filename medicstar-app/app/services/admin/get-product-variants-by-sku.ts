@@ -1,7 +1,5 @@
 import { unauthenticated } from "../../shopify.server";
 
-const SHOP_DOMAIN = process.env.SHOP_DOMAIN!;
-
 type InventoryItem = {
   id: string;
 }
@@ -23,11 +21,12 @@ interface ShopifyVariant {
  * Get product variants by SKU list
  */
 export const getProductVariantsBySku = async (
-  skus: string[]
+  skus: string[],
+  shopDomain: string
 ): Promise<ShopifyVariant[]> => {
   const {
     admin: { graphql },
-  } = await unauthenticated.admin(SHOP_DOMAIN);
+  } = await unauthenticated.admin(shopDomain);
 
   // Create SKU query string
   const skuQuery = skus.map(sku => `sku:${sku}`).join(" OR ");

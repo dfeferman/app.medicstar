@@ -61,6 +61,6 @@ export async function createContact(contact: ContactInput): Promise<string> {
   const returned = body?.CreateContactResponse?.inboundCreateContact;
   const customerNo = returned?.Contact?.No;
 
-  console.log("Extracted contact number:", customerNo);
+  // console.log("Extracted contact number:", customerNo);
   return String(customerNo ?? "");
 }

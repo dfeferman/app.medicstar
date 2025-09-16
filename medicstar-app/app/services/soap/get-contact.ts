@@ -38,7 +38,7 @@ async function getContactsByEmail(email: string): Promise<any[]> {
 
   const get = (obj: any, key: string) => obj?.[key]?._ ?? obj?.[key] ?? obj?.["contact:" + key]?._ ?? obj?.["contact:" + key];
 
-  console.log("contacts>>>>>>>>>", contacts);
+  // console.log("contacts>>>>>>>>>", contacts);
   const simplified = contacts.map((c: any) => ({
     No: get(c, "No"),
     Name: get(c, "Name"),

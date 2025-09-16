@@ -1,7 +1,5 @@
 import { unauthenticated } from "../../shopify.server";
 
-const SHOP_DOMAIN = process.env.SHOP_DOMAIN!;
-
 interface ShopifyVariant {
   id: string;
   inventoryQuantity: number;
@@ -28,11 +26,12 @@ export const updateProductVariantsBulk = async (
     id: string;
     productId: string;
     price?: string;
-  }>
+  }>,
+  shopDomain: string
 ): Promise<BulkUpdateResult> => {
   const {
     admin: { graphql },
-  } = await unauthenticated.admin(SHOP_DOMAIN);
+  } = await unauthenticated.admin(shopDomain);
 
   // Group variants by productId
   const variantsByProduct = new Map<string, Array<{

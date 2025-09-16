@@ -1,10 +1,9 @@
 import { $Enums } from "@prisma/client";
 import prisma from "../../../../db.server";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
-export const createNextProcess = async (process: any) => {
-  console.log(`[createNextProcess] Processing Process ID: ${process.id}`);
+const createNextProcessTask = async (process: ProcessWithShop) => {
 
-  try {
     const processData = process.data as any;
     const batchNumber = processData.batchNumber || 1;
     const totalBatches = processData.totalBatches || 1;
@@ -15,6 +14,7 @@ export const createNextProcess = async (process: any) => {
       await prisma.process.create({
         data: {
           jobId: process.jobId,
+          shopId: process.shopId,
           type: $Enums.ProcessType.UPDATE_VARIANTS,
           status: $Enums.Status.PENDING,
           logMessage: `Variant update process for batch ${batchNumber} (${processData.variants.length} variants)`,
@@ -31,6 +31,7 @@ export const createNextProcess = async (process: any) => {
       await prisma.process.create({
         data: {
           jobId: process.jobId,
+          shopId: process.shopId,
           type: $Enums.ProcessType.FINISH,
           status: $Enums.Status.PENDING,
           logMessage: `All variant updates completed, ready to finish job`
@@ -49,9 +50,8 @@ export const createNextProcess = async (process: any) => {
     });
 
     console.log(`[createNextProcess] ✅ Process ID: ${process.id} completed successfully`);
+};
 
-  } catch (error) {
-    console.error(`[createNextProcess] ❌ Process ID: ${process.id} failed:`, error);
-    throw error; // Re-throw to let runProcessWrapper handle it
-  }
+export const createNextProcess = async (process: any) => {
+  await runProcessWrapper(process, createNextProcessTask);
 };

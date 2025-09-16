@@ -31,6 +31,15 @@ model Session {
   emailVerified Boolean?  @default(false)
 }
 
+model Shop {
+  id             Int              @id @default(autoincrement())
+  domain         String           @unique
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  jobs           Job[]
+  processes      Process[]
+}
+
 model Contact {
   id                                  Int       @id @default(autoincrement())
   shopifyCustomerId                   String
@@ -41,73 +50,6 @@ model Contact {
   @@index([businessCenterContactNo])
 }
 
-model Product {
-  id                                  Int       @id @default(autoincrement())
-  shopifyProductId                    String?
-  title                               String
-  vendor                              String
-  SKU                                 String
-  groupId                             Int
-  description                         String?
-  priceNetto                          Decimal  @db.Decimal(10, 2)
-  quantity                            Int
-  deliveryTime                        String
-  collection1                         String
-  collection2                         String?
-  collection3                         String?
-  collection4                         String?
-  listOfAdvantages                    String?
-  metaTitle                           String?
-  metaDescription                     String?
-  variants                            ProductVariant[]
-  lastSyncedAt                        DateTime
-
-  @@index([shopifyProductId], name: "product_shopifyId")
-  @@index([groupId], name: "product_groupId")
-  @@index([SKU], name: "product_SKU")
-}
-
-model ProductVariant {
-  id                                  Int       @id @default(autoincrement())
-  shopifyVariantId                    String?
-  optionName                          String
-  title                               String
-  SKU                                 String
-  groupId                             Int
-  priceNetto                          Decimal  @db.Decimal(10, 2)
-  quantity                            Int
-  listOfAdvantages                    String?
-  productId                           Int
-  product                             Product @relation(fields: [productId], references: [id])
-  lastSyncedAt                        DateTime
-
-  @@index([shopifyVariantId], name: "productVariant_shopifyId")
-  @@index([groupId], name: "productVariant_groupId")
-  @@index([SKU], name: "productVariant_SKU")
-}
-
-model StatusFlag {
-  id Int @id @default(autoincrement())
-  shouldSuspiciousBeUpdated                  Boolean
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-}
-
-model SyncProductsTask {
-  id             Int                 @id @default(autoincrement())
-  stage          StatusEnum
-  inProgress     Boolean             @default(false)
-  data           Json                @default("{}")
-  retryCount     Int                 @default(0)
-  error          String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-
-  @@index([stage], name: "SyncProductsTaskStageIndex")
-  @@index([inProgress, updatedAt], name: "SyncProductsTaskInProgressUpdatedAtIndex")
-}
-
 model Job {
   id            Int @id @default(autoincrement())
   status        Status
@@ -116,6 +58,8 @@ model Job {
   processes     Process[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  shopId        Int
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([status], name: "JobStatusIndex")
   @@index([createdAt], name: "JobCreatedAtIndex")
@@ -131,20 +75,11 @@ model Process {
   job         Job @relation(fields: [jobId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  shopId      Int
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([status], name: "ProcessStatusIndex")
   @@index([createdAt], name: "ProcessCreatedAtIndex")
-}
-
-enum StatusEnum {
-  START
-  DOWNLOAD_FILE
-  PARSE_FILE
-  CREATE_BULK_TASK
-  WAIT_FOR_FINISH
-  DOWNLOAD_RESULT
-  PROCESS_RESULT
-  FINISH
 }
 
 enum Status {

@@ -15,7 +15,7 @@ type NoteAttribute = {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { shop, payload, topic } = await authenticate.webhook(request);
+  const { shop, payload } = await authenticate.webhook(request);
 
   processOrder(shop, payload).catch(console.error);
   return new Response();
@@ -27,19 +27,19 @@ const processOrder = async (shop: string, payload: any) => {
   const noteAttrs = payload.note_attributes as Array<NoteAttribute>;
   const noteTemplate = (noteAttrs.find((a) => a?.name === "kundengruppe")?.value || "ONLINESHOP").trim();
 
-  console.log("payload>>>>>>>>>", payload);
+  // console.log("payload>>>>>>>>>", payload);
 
   // Fetch transaction data from Shopify
   const orderGid = `gid://shopify/Order/${payload.id}`;
   const transactionData = await getOrderTransactions(shop, orderGid);
   const paymentFields = mapTransactionToPaymentFields(transactionData);
 
-  console.log("Transaction data:", transactionData);
-  console.log("Payment fields:", paymentFields);
+  // console.log("Transaction data:", transactionData);
+  // console.log("Payment fields:", paymentFields);
 
   // Console log shipping price
   const shippingPrice = payload.total_shipping_price_set?.shop_money?.amount || "0.00";
-  console.log("Shipping price:", shippingPrice);
+  // console.log("Shipping price:", shippingPrice);
 
   // Check if contact exists
   const existingContacts = await getContactByEmail(payload.email);
@@ -170,9 +170,9 @@ const processOrder = async (shop: string, payload: any) => {
     console.log("Document no:", documentNo);
     if (documentNo) {
       const id = payload.admin_graphql_api_id;
-      console.log("Tagging order with ID:", id);
-      console.log("Tagging order with document no:", documentNo);
-      console.log("Tagging order with shop:", shop);
+      // console.log("Tagging order with ID:", id);
+      // console.log("Tagging order with document no:", documentNo);
+      // console.log("Tagging order with shop:", shop);
       await tagOrderWithExternalDoc(shop, id, documentNo);
     }
   } catch (err) {

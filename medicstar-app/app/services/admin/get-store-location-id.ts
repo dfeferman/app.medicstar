@@ -1,14 +1,12 @@
 import { unauthenticated } from "../../shopify.server";
 
-const SHOP_DOMAIN = process.env.SHOP_DOMAIN!;
-
 /**
  * Get the primary location ID for the store
  */
-export const getStoreLocationId = async (): Promise<string> => {
+export const getStoreLocationId = async (shopDomain: string): Promise<string> => {
   const {
     admin: { graphql },
-  } = await unauthenticated.admin(SHOP_DOMAIN);
+  } = await unauthenticated.admin(shopDomain);
  //TODO: IF add location rewrite here
   const query = `#graphql
     query getLocations {

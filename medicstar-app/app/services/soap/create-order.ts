@@ -67,6 +67,7 @@ export type OrderInput = {
 export type CreateOrderResult = { documentNo?: string };
 
 const SHIPPING_AGENT_SERVICE_CODE = "STANDARD";
+const SHIPPING_METHOD_CODE = "WEBSHOP";
 const PRODUCT_TYPE = "Item";
 
 export async function createOrder(order: OrderInput): Promise<CreateOrderResult> {
@@ -107,6 +108,7 @@ export async function createOrder(order: OrderInput): Promise<CreateOrderResult>
 
     <x53:Header_General>
       <x53:Order_Date>${formattedOrderDate}</x53:Order_Date>
+      <x53:Shipment_Method_Code>${SHIPPING_METHOD_CODE}</x53:Shipment_Method_Code>
       <x53:Shipping_Agent_Code>${order.shippingAgentCode}</x53:Shipping_Agent_Code>
       <x53:Shipping_Agent_Service_Code>${SHIPPING_AGENT_SERVICE_CODE}</x53:Shipping_Agent_Service_Code>
       <x53:External_Document_No>${order.orderExternalDocNo}</x53:External_Document_No>

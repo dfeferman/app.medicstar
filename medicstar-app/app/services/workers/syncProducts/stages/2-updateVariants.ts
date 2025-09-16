@@ -2,6 +2,7 @@ import { $Enums } from "@prisma/client";
 import prisma from "../../../../db.server";
 import { getProductVariantsBySku, updateProductVariantsBulk, getStoreLocationId, setInventoryQuantities } from "../../../admin";
 import { cleanupDownloadedFile } from "../../helpers/removeFile";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
 
 interface VariantData {
@@ -10,12 +11,7 @@ interface VariantData {
   quantity: string;
 }
 
-
-export const processVariantBatch = async (process: any) => {
-  console.log(`[processVariantBatch] Processing Process ID: ${process.id}`);
-
-  try {
-
+const processVariantBatchTask = async (process: ProcessWithShop) => {
     // Get variant data from process
     const processData = process.data as any;
     const variants: VariantData[] = processData.variants || [];
@@ -30,7 +26,7 @@ export const processVariantBatch = async (process: any) => {
     const skus = variants.map(v => v.sku);
 
     // Get existing variants from Shopify
-    const existingVariants = await getProductVariantsBySku(skus);
+    const existingVariants = await getProductVariantsBySku(skus, process.shop.domain);
     console.log(`[processVariantBatch] Found ${existingVariants.length} existing variants in Shopify`);
 
     // Create mapping of SKU to Shopify variant
@@ -59,7 +55,7 @@ export const processVariantBatch = async (process: any) => {
     let skippedCount = 0;
 
     // Get store location ID once
-    const locationId = await getStoreLocationId();
+    const locationId = await getStoreLocationId(process.shop.domain);
 
     for (const variant of variants) {
       const existingVariant = skuToVariant.get(variant.sku);
@@ -104,7 +100,7 @@ export const processVariantBatch = async (process: any) => {
     if (bulkUpdateData.length > 0) {
       console.log(`[processVariantBatch] Updating ${bulkUpdateData.length} variant prices...`);
 
-      const result = await updateProductVariantsBulk(bulkUpdateData);
+      const result = await updateProductVariantsBulk(bulkUpdateData, process.shop.domain);
 
       if (result.userErrors && result.userErrors.length > 0) {
         const errorMessages = result.userErrors.map(err => err.message).join('; ');
@@ -118,7 +114,7 @@ export const processVariantBatch = async (process: any) => {
     if (inventoryUpdateData.length > 0) {
       console.log(`[processVariantBatch] Setting inventory quantities for ${inventoryUpdateData.length} items...`);
 
-      const inventoryResult = await setInventoryQuantities(inventoryUpdateData);
+      const inventoryResult = await setInventoryQuantities(inventoryUpdateData, process.shop.domain);
 
       if (!inventoryResult.success || inventoryResult.userErrors.length > 0) {
         const errorMessages = inventoryResult.userErrors.map(err => err.message).join('; ');
@@ -165,6 +161,7 @@ export const processVariantBatch = async (process: any) => {
           await prisma.process.create({
             data: {
               jobId: process.jobId,
+              shopId: process.shopId,
               type: $Enums.ProcessType.CREATE_NEXT_PROCESS,
               status: $Enums.Status.PENDING,
               logMessage: `Create next process for batch ${nextBatchNumber}`,
@@ -193,11 +190,10 @@ export const processVariantBatch = async (process: any) => {
     }
 
     console.log(`[processVariantBatch] ✅ Process ID: ${process.id} completed successfully`);
+};
 
-  } catch (error) {
-    console.error(`[processVariantBatch] ❌ Process ID: ${process.id} failed:`, error);
-    throw error; // Re-throw to let runProcessWrapper handle it
-  }
+export const processVariantBatch = async (process: any) => {
+  await runProcessWrapper(process, processVariantBatchTask);
 };
 
 

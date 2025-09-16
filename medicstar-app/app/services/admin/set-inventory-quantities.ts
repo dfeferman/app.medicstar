@@ -1,16 +1,16 @@
 import { unauthenticated } from "../../shopify.server";
-const SHOP_DOMAIN = process.env.SHOP_DOMAIN!;
 
 export const setInventoryQuantities = async (
   inventoryUpdates: Array<{
     inventoryItemId: string;
     locationId: string;
     quantity: number;
-  }>
+  }>,
+  shopDomain: string
 ): Promise<{ success: boolean; userErrors: any[] }> => {
   const {
     admin: { graphql },
-  } = await unauthenticated.admin(SHOP_DOMAIN);
+  } = await unauthenticated.admin(shopDomain);
 
   const mutation = `#graphql
     mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {

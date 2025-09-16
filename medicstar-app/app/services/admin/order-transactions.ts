@@ -38,7 +38,7 @@ export async function getOrderTransactions(
     const res = await graphql(query, { variables: { id: orderGid } });
     const json = await res.json();
 
-    logFullResponse(json); // TODO: Remove this
+    // logFullResponse(json); // TODO: Remove this
 
     if (!hasTransactions(json)) {
       console.log("No transactions found for order");
