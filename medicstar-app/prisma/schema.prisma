@@ -108,6 +108,34 @@ model SyncProductsTask {
   @@index([inProgress, updatedAt], name: "SyncProductsTaskInProgressUpdatedAtIndex")
 }
 
+model Job {
+  id            Int @id @default(autoincrement())
+  status        Status
+  logMessage    String?
+  data          Json @default("{}")
+  processes     Process[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status], name: "JobStatusIndex")
+  @@index([createdAt], name: "JobCreatedAtIndex")
+}
+
+model Process {
+  id          Int @id @default(autoincrement())
+  status      Status
+  type        ProcessType
+  logMessage  String?
+  data        Json @default("{}")
+  jobId       Int
+  job         Job @relation(fields: [jobId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status], name: "ProcessStatusIndex")
+  @@index([createdAt], name: "ProcessCreatedAtIndex")
+}
+
 enum StatusEnum {
   START
   DOWNLOAD_FILE
@@ -116,5 +144,20 @@ enum StatusEnum {
   WAIT_FOR_FINISH
   DOWNLOAD_RESULT
   PROCESS_RESULT
+  FINISH
+}
+
+enum Status {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ProcessType {
+  DOWNLOAD_FILE
+  PARSE_FILE
+  UPDATE_VARIANTS
+  CREATE_NEXT_PROCESS
   FINISH
 }
