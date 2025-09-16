@@ -1,6 +1,8 @@
 import { $Enums } from "@prisma/client";
 import prisma from "../../../../db.server";
 import { getProductVariantsBySku, updateProductVariantsBulk, getStoreLocationId, setInventoryQuantities } from "../../../admin";
+import { cleanupDownloadedFile } from "../../helpers/removeFile";
+
 
 interface VariantData {
   sku: string;
@@ -144,16 +146,18 @@ export const processVariantBatch = async (process: any) => {
     const batchNumber = currentProcessData.batchNumber || 1;
     const totalBatches = currentProcessData.totalBatches || 1;
 
-    if (batchNumber < totalBatches) {
-      // Create next batch process
-      const job = await prisma.job.findUnique({
-        where: { id: process.jobId },
-        select: { data: true }
-      });
+    // Always create CREATE_NEXT_PROCESS to handle next batch or finish
+    const job = await prisma.job.findUnique({
+      where: { id: process.jobId },
+      select: { data: true }
+    });
 
-      if (job && job.data) {
-        const jobData = job.data as any;
-        const allVariants = jobData.variants || [];
+    if (job && job.data) {
+      const jobData = job.data as any;
+      const allVariants = jobData.variants || [];
+
+      if (batchNumber < totalBatches) {
+        // Create next batch process
         const nextBatchNumber = batchNumber + 1;
         const nextBatch = allVariants.slice((nextBatchNumber - 1) * 250, nextBatchNumber * 250);
 
@@ -173,18 +177,19 @@ export const processVariantBatch = async (process: any) => {
           });
           console.log(`[processVariantBatch] Created CREATE_NEXT_PROCESS for batch ${nextBatchNumber}`);
         }
+      } else {
+        // All batches completed, mark job as completed directly
+        await prisma.job.update({
+          where: { id: process.jobId },
+          data: {
+            status: $Enums.Status.COMPLETED,
+            logMessage: `Job completed successfully: All variant updates completed`
+          }
+        });
+        console.log(`[processVariantBatch] Job ${process.jobId} marked as COMPLETED directly`);
+
+        await cleanupDownloadedFile(process.jobId);
       }
-    } else {
-      // All batches completed, create FINISH process
-      await prisma.process.create({
-        data: {
-          jobId: process.jobId,
-          type: $Enums.ProcessType.FINISH,
-          status: $Enums.Status.PENDING,
-          logMessage: `All variant updates completed, ready to finish job`
-        }
-      });
-      console.log(`[processVariantBatch] Created FINISH process for job ${process.jobId}`);
     }
 
     console.log(`[processVariantBatch] ✅ Process ID: ${process.id} completed successfully`);
@@ -194,3 +199,5 @@ export const processVariantBatch = async (process: any) => {
     throw error; // Re-throw to let runProcessWrapper handle it
   }
 };
+
+

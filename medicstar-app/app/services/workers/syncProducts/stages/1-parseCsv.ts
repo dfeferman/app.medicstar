@@ -107,9 +107,9 @@ export const parseCsv = async (job: any) => {
     await prisma.process.update({
       where: { id: parseProcess.id },
       data: {
-        type: $Enums.ProcessType.CREATE_NEXT_PROCESS,
+        type: $Enums.ProcessType.UPDATE_VARIANTS,
         status: $Enums.Status.PENDING,
-        logMessage: `Create next process for batch 1 (${firstBatch.length} variants)`,
+        logMessage: `Variant update process for batch 1 (${firstBatch.length} variants)`,
         data: {
           variants: firstBatch as any,
           batchNumber: 1,

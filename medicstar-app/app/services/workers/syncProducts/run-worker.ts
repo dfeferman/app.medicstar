@@ -4,7 +4,7 @@ import { downloadCsv } from './stages/0-downloadCsv';
 import { parseCsv } from './stages/1-parseCsv';
 import { processVariantBatch } from './stages/2-updateVariants';
 import { createNextProcess } from './stages/3-createNextProcess';
-import { finish } from './stages/4-finish';
+// import { finish } from './stages/4-finish';
 import { sleep } from '../helpers/sleep';
 
 export const runWorker = async (): Promise<void> => {
@@ -64,9 +64,9 @@ export const runWorker = async (): Promise<void> => {
       case $Enums.ProcessType.CREATE_NEXT_PROCESS:
         await createNextProcess(pendingProcess);
         break;
-      case $Enums.ProcessType.FINISH:
-        await finish(pendingJob);
-        break;
+      // case $Enums.ProcessType.FINISH:
+      //   await finish(pendingJob);
+      //   break;
     }
 
     // Fix zombie jobs and continue
