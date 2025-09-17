@@ -27,7 +27,10 @@ export default function App() {
         <Link to="/app" rel="home">
           Home
         </Link>
-        <Link to="/app/additional">Additional page</Link>
+        {/* <Link to="/app/additional">Additional page</Link> */}
+        <Link to="/app/syncSettings">Sync Prices & Stock</Link>
+        <Link to="/app/syncStatus">Sync Status</Link>
+
       </NavMenu>
       <Outlet />
     </AppProvider>
