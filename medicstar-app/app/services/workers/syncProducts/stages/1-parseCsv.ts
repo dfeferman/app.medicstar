@@ -1,9 +1,11 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as process from "process";
 import XLSX from "xlsx";
 import { $Enums } from "@prisma/client";
 import prisma from "../../../../db.server";
 import { buildLowerKeyMap, pickFirst, toStringOrEmpty, toIntegerOrZero } from "../../../../utils/xlsx";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
 type RowRecord = Record<string, unknown>;
 
@@ -21,8 +23,16 @@ interface VariantData {
 
 const BATCH_SIZE = 250;
 
-export const parseCsv = async (job: any) => {
-  console.log(`[parseCsv] Starting CSV parsing for Job ID: ${job.id}`);
+const parseCsvTask = async (processData: ProcessWithShop) => {
+  // Get job data from the process
+  const job = await prisma.job.findUnique({
+    where: { id: processData.jobId },
+    select: { data: true }
+  });
+
+  if (!job) {
+    throw new Error(`Job ${processData.jobId} not found`);
+  }
 
   const jobData = job.data as any;
   const filePath = jobData?.filePath;
@@ -67,7 +77,7 @@ export const parseCsv = async (job: any) => {
 
   if (variants.length === 0) {
     await prisma.job.update({
-      where: { id: job.id },
+      where: { id: processData.jobId },
       data: {
         status: $Enums.Status.COMPLETED,
         logMessage: "No variants found to process"
@@ -82,7 +92,7 @@ export const parseCsv = async (job: any) => {
 
   // Update job with parsing results
   await prisma.job.update({
-    where: { id: job.id },
+    where: { id: processData.jobId },
     data: {
       logMessage: `CSV parsed successfully: ${totalBatches} batches prepared for ${variants.length} variants`,
       data: {
@@ -94,30 +104,54 @@ export const parseCsv = async (job: any) => {
     }
   });
 
-  // Update the existing PARSE_FILE process to be the first UPDATE_VARIANTS batch
+  // Mark the current PARSE_FILE process as COMPLETED
   const parseProcess = await prisma.process.findFirst({
     where: {
-      jobId: job.id,
-      type: $Enums.ProcessType.PARSE_FILE
+      jobId: processData.jobId,
+      type: $Enums.ProcessType.PARSE_FILE,
+      status: $Enums.Status.PROCESSING
     }
   });
 
-  if (parseProcess && variants.length > 0) {
-    const firstBatch = variants.slice(0, 250);
+  if (parseProcess) {
     await prisma.process.update({
       where: { id: parseProcess.id },
       data: {
-        type: $Enums.ProcessType.UPDATE_VARIANTS,
-        status: $Enums.Status.PENDING,
-        logMessage: `Variant update process for batch 1 (${firstBatch.length} variants)`,
-        data: {
-          variants: firstBatch as any,
-          batchNumber: 1,
-          totalBatches: totalBatches
-        }
+        status: $Enums.Status.COMPLETED,
+        logMessage: `CSV parsing completed successfully: ${variants.length} variants parsed into ${totalBatches} batches`
       }
     });
+
+    // Create multiple UPDATE_VARIANTS processes
+    if (variants.length > 0) {
+      for (let i = 0; i < totalBatches; i++) {
+        const startIndex = i * BATCH_SIZE;
+        const endIndex = Math.min(startIndex + BATCH_SIZE, variants.length);
+        const batch = variants.slice(startIndex, endIndex);
+
+        await prisma.process.create({
+          data: {
+            jobId: processData.jobId,
+            shopId: processData.shopId,
+            type: $Enums.ProcessType.UPDATE_VARIANTS,
+            status: $Enums.Status.PENDING,
+            logMessage: `Variant update process for batch ${i + 1} (${batch.length} variants)`,
+            data: {
+              variants: batch as any,
+              batchNumber: i + 1,
+              totalBatches: totalBatches
+            }
+          }
+        });
+      }
+
+      console.log(`[parseCsv] Created ${totalBatches} UPDATE_VARIANTS processes for job ${processData.jobId}`);
+    }
   }
 
-  console.log(`[parseCsv] ✅ CSV parsing completed for Job ID: ${job.id}`);
+  console.log(`[parseCsv] ✅ CSV parsing completed for Job ID: ${processData.jobId}`);
+};
+
+export const parseCsv = async (process: any) => {
+  await runProcessWrapper(process, parseCsvTask);
 };

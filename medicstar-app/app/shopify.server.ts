@@ -23,6 +23,23 @@ const shopify = shopifyApp({
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
+    hooks: {
+      afterAuth: async ({ session }) => {
+        const domain = session.shop;
+
+        const shop = await prisma.shop.upsert({
+          where: { domain },
+          update: {
+            updatedAt: new Date(),
+          },
+          create: {
+            domain,
+          },
+        });
+
+        console.log(`[afterAuth] Shop ${shop.id} (${domain}) is ready`);
+      },
+    }
 });
 
 export default shopify;
@@ -33,25 +50,3 @@ export const unauthenticated = shopify.unauthenticated;
 export const login = shopify.login;
 export const registerWebhooks = shopify.registerWebhooks;
 export const sessionStorage = shopify.sessionStorage;
-
-export const getAdminContext = async (request: Request) => {
-  const adminContext = await shopify.authenticate.admin(request);
-
-  const domain = adminContext.session.shop;
-
-  const exist = await prisma.shop.findUnique({
-    where: {
-      domain,
-    },
-  });
-
-  if (!exist) {
-    await prisma.shop.create({
-      data: {
-        domain,
-      },
-    });
-  }
-
-  return adminContext;
-};

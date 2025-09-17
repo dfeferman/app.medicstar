@@ -137,57 +137,18 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
       }
     });
 
-    // After completing UPDATE_VARIANTS, create next process
-    const currentProcessData = process.data as any;
-    const batchNumber = currentProcessData.batchNumber || 1;
-    const totalBatches = currentProcessData.totalBatches || 1;
-
-    // Always create CREATE_NEXT_PROCESS to handle next batch or finish
-    const job = await prisma.job.findUnique({
-      where: { id: process.jobId },
-      select: { data: true }
+    // Create FINISH process
+    await prisma.process.create({
+      data: {
+        jobId: process.jobId,
+        shopId: process.shopId,
+        type: $Enums.ProcessType.FINISH,
+        status: $Enums.Status.PENDING,
+        logMessage: `Finish process created for job ${process.jobId}`
+      }
     });
 
-    if (job && job.data) {
-      const jobData = job.data as any;
-      const allVariants = jobData.variants || [];
-
-      if (batchNumber < totalBatches) {
-        // Create next batch process
-        const nextBatchNumber = batchNumber + 1;
-        const nextBatch = allVariants.slice((nextBatchNumber - 1) * 250, nextBatchNumber * 250);
-
-        if (nextBatch.length > 0) {
-          await prisma.process.create({
-            data: {
-              jobId: process.jobId,
-              shopId: process.shopId,
-              type: $Enums.ProcessType.CREATE_NEXT_PROCESS,
-              status: $Enums.Status.PENDING,
-              logMessage: `Create next process for batch ${nextBatchNumber}`,
-              data: {
-                variants: nextBatch as any,
-                batchNumber: nextBatchNumber,
-                totalBatches: totalBatches
-              }
-            }
-          });
-          console.log(`[processVariantBatch] Created CREATE_NEXT_PROCESS for batch ${nextBatchNumber}`);
-        }
-      } else {
-        // All batches completed, mark job as completed directly
-        await prisma.job.update({
-          where: { id: process.jobId },
-          data: {
-            status: $Enums.Status.COMPLETED,
-            logMessage: `Job completed successfully: All variant updates completed`
-          }
-        });
-        console.log(`[processVariantBatch] Job ${process.jobId} marked as COMPLETED directly`);
-
-        await cleanupDownloadedFile(process.jobId);
-      }
-    }
+    console.log(`[processVariantBatch] Created FINISH process for job ${process.jobId}`);
 
     console.log(`[processVariantBatch] ✅ Process ID: ${process.id} completed successfully`);
 };

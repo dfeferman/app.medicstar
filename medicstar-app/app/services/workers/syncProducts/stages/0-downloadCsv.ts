@@ -4,26 +4,14 @@ import * as fs from "fs";
 import * as path from "path";
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
 const DOWNLOADS_FOLDER = "downloads";
 const EXCEL_URL = process.env.INPUT_PRODUCT_FILE_URL as string;
 
-export const downloadCsv = async (job: any) => {
-  console.log(`[downloadCsv] Starting CSV download for Job ID: ${job.id}`);
-
+const downloadCsvTask = async (process: ProcessWithShop) => {
   if (!EXCEL_URL) {
     throw new Error("INPUT_PRODUCT_FILE_URL environment variable is not set");
-  }
-
-  // Mark job as processing if it was pending
-  if (job.status === $Enums.Status.PENDING) {
-    await prisma.job.update({
-      where: { id: job.id },
-      data: {
-        status: $Enums.Status.PROCESSING,
-        logMessage: `Job started processing at ${new Date().toISOString()}`
-      }
-    });
   }
 
   // Create downloads folder if it doesn't exist
@@ -49,10 +37,14 @@ export const downloadCsv = async (job: any) => {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
 
-  // Update job with file path
+  // Update job with file path and mark as PROCESSING (only if currently PENDING)
   await prisma.job.update({
-    where: { id: job.id },
+    where: {
+      id: process.jobId,
+      status: $Enums.Status.PENDING  // Only update if job is still PENDING
+    },
     data: {
+      status: $Enums.Status.PROCESSING,
       logMessage: `CSV downloaded successfully: ${filePath}`,
       data: {
         filePath: filePath,
@@ -61,11 +53,12 @@ export const downloadCsv = async (job: any) => {
     }
   });
 
-  // Update the existing DOWNLOAD_FILE process to PARSE_FILE
+  // Mark the current DOWNLOAD_FILE process as COMPLETED
   const downloadProcess = await prisma.process.findFirst({
     where: {
-      jobId: job.id,
-      type: $Enums.ProcessType.DOWNLOAD_FILE
+      jobId: process.jobId,
+      type: $Enums.ProcessType.DOWNLOAD_FILE,
+      status: $Enums.Status.PROCESSING
     }
   });
 
@@ -73,11 +66,28 @@ export const downloadCsv = async (job: any) => {
     await prisma.process.update({
       where: { id: downloadProcess.id },
       data: {
-        type: $Enums.ProcessType.PARSE_FILE,
-        logMessage: `Download completed, ready for parsing`
+        status: $Enums.Status.COMPLETED,
+        logMessage: `Download completed successfully: ${filePath}`
       }
     });
+
+    // Create new PARSE_FILE process
+    await prisma.process.create({
+      data: {
+        jobId: process.jobId,
+        shopId: process.shopId,
+        type: $Enums.ProcessType.PARSE_FILE,
+        status: $Enums.Status.PENDING,
+        logMessage: `Parse CSV process created for job ${process.jobId}`
+      }
+    });
+
+    console.log(`[downloadCsv] Created PARSE_FILE process for job ${process.jobId}`);
   }
 
-  console.log(`[downloadCsv] ✅ CSV download completed for Job ID: ${job.id}`);
+  console.log(`[downloadCsv] ✅ CSV download completed for Job ID: ${process.jobId}`);
+};
+
+export const downloadCsv = async (process: any) => {
+  await runProcessWrapper(process, downloadCsvTask);
 };

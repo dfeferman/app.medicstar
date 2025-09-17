@@ -9,6 +9,10 @@ export function mapGatewayToTxCode(gateway: string): string {
     return 'PAYPAL';
   } else if (gatewayLower.includes('vorkasse') || gatewayLower.includes('prepayment')) {
     return 'VORKASSE';
+  } else if (gatewayLower.includes('kreditkarte')) {
+    return 'SHOPIFYPAY';
+  } else if (gatewayLower.includes('klarna')) {
+    return 'KLARNA';
   } else {
     return '';
   }

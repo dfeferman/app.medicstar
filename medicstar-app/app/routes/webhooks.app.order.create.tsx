@@ -6,6 +6,7 @@ import { tagOrderWithExternalDoc } from "../services/admin/tag-order.server";
 import { getOrderTransactions, mapTransactionToPaymentFields } from "../services/admin/order-transactions";
 import { mapShippingAgentCode } from "../utils/mappers/mapShippingAgentCode";
 import { mapGatewayToTxCode } from "../utils/mappers/mapGatewayToTxCode";
+import { mapCustomerGroup } from "../utils/mappers/mapCustomerGroup";
 import { getContactByEmail } from "../services/soap/get-contact";
 import { createContact } from "../services/soap/create-contact";
 
@@ -25,7 +26,10 @@ let order: any;
 
 const processOrder = async (shop: string, payload: any) => {
   const noteAttrs = payload.note_attributes as Array<NoteAttribute>;
-  const noteTemplate = (noteAttrs.find((a) => a?.name === "kundengruppe")?.value || "ONLINESHOP").trim();
+  const rawCustomerGroup = noteAttrs.find((a) => a?.name === "kundengruppe")?.value || "ONLINESHOP";
+  const noteTemplate = mapCustomerGroup(rawCustomerGroup);
+
+  console.log(`[processOrder] Customer group mapping: "${rawCustomerGroup}" -> "${noteTemplate}"`);
 
   // console.log("payload>>>>>>>>>", payload);
 
