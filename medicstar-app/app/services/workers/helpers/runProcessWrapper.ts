@@ -15,11 +15,21 @@ export async function runProcessWrapper(
 ) {
   console.log(`[runProcessWrapper] Processing Process ID: ${process.id}`);
 
-  // Mark process as processing
+  // Increment retry count and mark process as processing
   await prisma.process.update({
     where: { id: process.id },
     data: {
       status: $Enums.Status.PROCESSING,
+      retryCount: { increment: 1 },
+      updatedAt: new Date(),
+    },
+  });
+
+  // Also increment job retry count
+  await prisma.job.update({
+    where: { id: process.jobId },
+    data: {
+      retryCount: { increment: 1 },
       updatedAt: new Date(),
     },
   });

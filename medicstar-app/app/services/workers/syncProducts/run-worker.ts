@@ -64,6 +64,7 @@ export const runWorker = async (): Promise<void> => {
     }
 
     await fixZombieJobs();
+    await fixZombieProcesses();
     await sleep(1000);
     return runWorker();
 
@@ -89,7 +90,7 @@ export const runWorker = async (): Promise<void> => {
 };
 
 const fixZombieJobs = async () => {
-  await prisma.job.updateMany({
+  const result = await prisma.job.updateMany({
     where: {
       status: $Enums.Status.PROCESSING,
       updatedAt: {
@@ -98,9 +99,36 @@ const fixZombieJobs = async () => {
     },
     data: {
       status: $Enums.Status.FAILED,
-      logMessage: 'Job marked as failed due to timeout (zombie job)'
+      retryCount: { increment: 1 },
+      logMessage: 'Job marked as failed due to timeout (zombie job)',
+      updatedAt: new Date()
     }
   });
+
+  if (result.count > 0) {
+    console.log(`[fixZombieJobs] Fixed ${result.count} zombie jobs`);
+  }
+};
+
+const fixZombieProcesses = async () => {
+  const result = await prisma.process.updateMany({
+    where: {
+      status: $Enums.Status.PROCESSING,
+      updatedAt: {
+        lte: new Date(Date.now() - 1000 * 60 * 30)
+      }
+    },
+    data: {
+      status: $Enums.Status.FAILED,
+      retryCount: { increment: 1 },
+      logMessage: 'Process marked as failed due to timeout (zombie process)',
+      updatedAt: new Date()
+    }
+  });
+
+  if (result.count > 0) {
+    console.log(`[fixZombieProcesses] Fixed ${result.count} zombie processes`);
+  }
 };
 
 runWorker();
