@@ -53,7 +53,6 @@ const CurrentJobCard = ({
           This represents the current status of the sync task. Please wait until the product sync is finished. If you see an error, please check the logs for more information.
         </Text>
 
-        {/* Job Info */}
         <BlockStack gap="300">
           <TextField
             label="Job ID:"
@@ -90,7 +89,6 @@ const CurrentJobCard = ({
           )}
         </BlockStack>
 
-        {/* Progress Bar */}
         <BlockStack gap="400">
           <ProgressBar
             progress={currentProgress}
@@ -98,7 +96,6 @@ const CurrentJobCard = ({
             size="small"
           />
 
-          {/* Status Messages */}
           {isJobCompleted && (
             <Banner tone="success" title="Success">
               <Text as="p">The sync is finished successfully</Text>

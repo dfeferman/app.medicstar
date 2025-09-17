@@ -20,7 +20,6 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     }
   });
 
-  // Get pending jobs count for the same shop
   const pendingJobsCount = await prisma.job.count({
     where: {
       shop: { domain: session.shop },

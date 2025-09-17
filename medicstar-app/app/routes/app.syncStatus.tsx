@@ -4,10 +4,10 @@ import {
   BlockStack,
   Page,
 } from "@shopify/polaris";
-import { useState } from "react";
 import { useLoaderData } from "@remix-run/react";
 import { apiTaskLoader } from "../loaders/api.task.loader";
 import CurrentJobCard from "../components/CurrentJobCard";
+import { TitleBar } from "@shopify/app-bridge-react";
 
 interface Process {
   id: number;
@@ -51,8 +51,9 @@ export default function SyncStatusPage() {
 
   return (
     <Page>
+      <TitleBar title="Product Synchronization Status">
+      </TitleBar>
       <BlockStack gap="400">
-        {/* Current Job Status */}
         {task ? (
           <CurrentJobCard
             task={task}

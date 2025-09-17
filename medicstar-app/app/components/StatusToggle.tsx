@@ -31,7 +31,6 @@ const StatusToggle: FC<StatusToggleProps> = ({
     (index: number) => {
       if (disabled || !onToggle) return;
 
-      // If clicking the same button, don't do anything
       if ((index === 0 && !isEnabled) || (index === 1 && isEnabled)) return;
 
       onToggle();

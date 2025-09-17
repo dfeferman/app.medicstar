@@ -5,7 +5,7 @@ import {
   BlockStack,
   Page,
 } from "@shopify/polaris";
-import { useState } from "react";
+import { TitleBar } from "@shopify/app-bridge-react";
 import { useLoaderData } from "@remix-run/react";
 import { settingsLoader } from "../loaders/settings.loader";
 import AutoSyncCard from "../components/AutoSyncCard";
@@ -34,8 +34,9 @@ export default function SyncSettingsPage() {
 
   return (
     <Page>
+      <TitleBar title="Settings">
+      </TitleBar>
       <BlockStack gap="400">
-        {/* Auto Sync Control */}
         <Form method="post">
           <input type="hidden" name="actionType" value="toggle-auto-sync" />
           <input type="hidden" name="enabled" value={(!settings.isAutoSyncEnabled).toString()} />
@@ -45,24 +46,8 @@ export default function SyncSettingsPage() {
           />
         </Form>
 
-        {/* Manual Actions */}
-        <Form method="post">
-          <input type="hidden" name="actionType" value="force-sync" />
-          <ManualActionsCard
-            actionType="force-sync"
-            isLoading={isSubmitting}
-          />
-        </Form>
+        <ManualActionsCard isLoading={isSubmitting} />
 
-        <Form method="post">
-          <input type="hidden" name="actionType" value="stop-pending-tasks" />
-          <ManualActionsCard
-            actionType="stop-pending-tasks"
-            isLoading={isSubmitting}
-          />
-        </Form>
-
-        {/* Message Banner */}
         {actionData && (
           <Banner
             tone={actionData.success ? 'success' : 'critical'}

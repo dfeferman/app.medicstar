@@ -12,7 +12,7 @@ const AutoSyncCard = ({ isAutoSyncEnabled, isLoading }: AutoSyncCardProps) => {
       <BlockStack gap="400">
         <BlockStack gap="300">
           <Text as="h2" variant="headingLg">
-            Auto Sync Settings
+            Auto Settings
           </Text>
           <Text as="p">
             Automatically sync products daily at 00:00 UTC.
