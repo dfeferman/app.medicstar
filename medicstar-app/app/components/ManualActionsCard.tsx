@@ -1,5 +1,4 @@
 import { Card, BlockStack, Text } from "@shopify/polaris";
-import { Form } from "@remix-run/react";
 import ForceSyncComponent from "./ForceSyncComponent";
 import StopTasksComponent from "./StopTasksComponent";
 
@@ -14,16 +13,8 @@ const ManualActionsCard = ({ isLoading }: ManualActionsCardProps) => {
         <Text as="h2" variant="headingLg">
           Manual Settings
         </Text>
-
-        <Form method="post">
-          <input type="hidden" name="actionType" value="force-sync" />
-          <ForceSyncComponent isLoading={isLoading} />
-        </Form>
-
-        <Form method="post">
-          <input type="hidden" name="actionType" value="stop-pending-tasks" />
-          <StopTasksComponent isLoading={isLoading} />
-        </Form>
+        <ForceSyncComponent isLoading={isLoading} />
+        <StopTasksComponent isLoading={isLoading} />
       </BlockStack>
     </Card>
   );

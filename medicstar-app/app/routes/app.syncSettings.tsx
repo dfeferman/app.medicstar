@@ -1,5 +1,5 @@
 import type { LoaderFunction } from "@remix-run/node";
-import { Form, useActionData, useNavigation } from "@remix-run/react";
+import { useActionData, useNavigation } from "@remix-run/react";
 import {
   Banner,
   BlockStack,
@@ -37,17 +37,11 @@ export default function SyncSettingsPage() {
       <TitleBar title="Settings">
       </TitleBar>
       <BlockStack gap="400">
-        <Form method="post">
-          <input type="hidden" name="actionType" value="toggle-auto-sync" />
-          <input type="hidden" name="enabled" value={(!settings.isAutoSyncEnabled).toString()} />
-          <AutoSyncCard
-            isAutoSyncEnabled={settings.isAutoSyncEnabled}
-            isLoading={isSubmitting}
-          />
-        </Form>
-
+        <AutoSyncCard
+          isAutoSyncEnabled={settings.isAutoSyncEnabled}
+          isLoading={isSubmitting}
+        />
         <ManualActionsCard isLoading={isSubmitting} />
-
         {actionData && (
           <Banner
             tone={actionData.success ? 'success' : 'critical'}

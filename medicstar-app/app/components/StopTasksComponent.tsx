@@ -1,12 +1,35 @@
 import { Card, BlockStack, Text, Box, Button } from "@shopify/polaris";
+import { useState, useRef } from "react";
+import { Form } from "@remix-run/react";
+import ConfirmationModal from "./ConfirmationModal";
 
 interface StopTasksComponentProps {
   isLoading: boolean;
 }
 
 const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const handleButtonClick = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirm = () => {
+    setShowConfirmModal(false);
+    if (formRef.current) {
+      formRef.current.requestSubmit();
+    }
+  };
+
+  const handleCancel = () => {
+    setShowConfirmModal(false);
+  };
+
   return (
-    // <Card>
+    <Form method="post" data-action="stop-tasks" ref={formRef}>
+      <input type="hidden" name="actionType" value="stop-pending-tasks" />
+
       <BlockStack gap="400">
         <BlockStack gap="300">
           <Text as="h3" variant="headingMd">
@@ -17,7 +40,7 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
           </Text>
           <Box>
             <Button
-              submit
+              onClick={handleButtonClick}
               variant="secondary"
               tone="critical"
               disabled={isLoading}
@@ -27,7 +50,18 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
           </Box>
         </BlockStack>
       </BlockStack>
-    // </Card>
+
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title="Stop All Pending Tasks"
+        message="Are you sure you want to stop all pending synchronization tasks? This will mark all pending and processing tasks as failed."
+        confirmText="Stop Tasks"
+        destructive={true}
+        loading={isLoading}
+      />
+    </Form>
   );
 };
 
