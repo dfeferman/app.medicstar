@@ -14,12 +14,19 @@ export const settingsLoader: LoaderFunction = async ({ request }) => {
     throw new Error(`Shop not found for domain: ${shopDomain}`);
   }
 
-  const settings = await prisma.setting.findUnique({
+  let settings = await prisma.setting.findUnique({
     where: { shopId: shopRecord.id },
   });
 
   if (!settings) {
-    throw new Error("Settings not found for the shop");
+    settings = await prisma.setting.create({
+      data: {
+        shopId: shopRecord.id,
+        isAutoSyncEnabled: true,
+        isStopAllPendingTasks: false,
+        isForceSyncEnabled: false,
+      },
+    });
   }
 
   return { settings };
