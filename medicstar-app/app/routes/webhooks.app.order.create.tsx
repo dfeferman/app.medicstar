@@ -27,11 +27,25 @@ let order: any;
 const processOrder = async (shop: string, payload: any) => {
   const noteAttrs = payload.note_attributes as Array<NoteAttribute>;
   const rawCustomerGroup = noteAttrs.find((a) => a?.name === "kundengruppe")?.value || "ONLINESHOP";
-  const noteTemplate = mapCustomerGroup(rawCustomerGroup);
 
-  console.log(`[processOrder] Customer group mapping: "${rawCustomerGroup}" -> "${noteTemplate}"`);
+  const billToCountry = payload.billing_address?.country_code;
+  const taxesIncluded = payload.taxes_included;
 
-  // console.log("payload>>>>>>>>>", payload);
+  let noteTemplate: string;
+
+  switch (billToCountry) {
+    case "AT":
+      noteTemplate = taxesIncluded === true ? "ATMIT" : "ATOHNE";
+      break;
+    case "NL":
+      noteTemplate = taxesIncluded === true ? "NLMIT" : "NLOHNE";
+      break;
+    default:
+      noteTemplate = mapCustomerGroup(rawCustomerGroup);
+      break;
+  }
+
+  console.log("payload>>>>>>>>>", payload);
 
   // Fetch transaction data from Shopify
   const orderGid = `gid://shopify/Order/${payload.id}`;
@@ -66,7 +80,7 @@ const processOrder = async (shop: string, payload: any) => {
           : payload.billing_address?.address1,
         city: payload.billing_address?.city || "",
         phoneNumber: payload.customer?.phone || payload.billing_address?.phone || payload.shipping_address?.phone,
-        countryRegionCode: payload.billing_address?.country_code || "",
+        countryRegionCode: payload.billing_address.country_code || "",
         postCode: payload.billing_address?.zip || "",
         email: payload.email,
         customerTemplateCode: noteTemplate,

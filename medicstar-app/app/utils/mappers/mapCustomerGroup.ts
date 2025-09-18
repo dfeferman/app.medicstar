@@ -16,10 +16,6 @@ export const mapCustomerGroup = (groupName: string): string => {
     "Pflegebranche": "PFLEGE",
     "Arztpraxis": "ARZ",
     "Privatkunde": "PRIVAT",
-    "Austria with VAT": "ATMIT",
-    "Austria without VAT": "ATOHNE",
-    "Holland with VAT": "NLMIT",
-    "Holland without VAT": "NLOHNE",
   };
 
   // Normalize the input: trim whitespace
