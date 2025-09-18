@@ -6,7 +6,7 @@ interface StopTasksComponentProps {
 
 const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
   return (
-    <Card>
+    // <Card>
       <BlockStack gap="400">
         <BlockStack gap="300">
           <Text as="h3" variant="headingMd">
@@ -27,7 +27,7 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
           </Box>
         </BlockStack>
       </BlockStack>
-    </Card>
+    // </Card>
   );
 };
 

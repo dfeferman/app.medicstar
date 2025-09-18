@@ -149,7 +149,7 @@ const parseCsvTask = async (processData: ProcessWithShop) => {
     }
   }
 
-  console.log(`[parseCsv] ✅ CSV parsing completed for Job ID: ${processData.jobId}`);
+  console.log(`[parseCsv] ✅ CSV parsing completed for Task ID: ${processData.jobId}`);
 };
 
 export const parseCsv = async (process: any) => {

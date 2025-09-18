@@ -7,13 +7,10 @@ import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 
 import { authenticate } from "../shopify.server";
 
-// import { getAdminContext } from "../shopify.server";
-
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  // await getAdminContext(request);
 
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };
 };

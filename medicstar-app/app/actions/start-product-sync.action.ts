@@ -2,8 +2,8 @@ import type { ActionFunction } from "@remix-run/node";
 import { authenticate } from "app/shopify.server";
 import prisma from "../db.server";
 import { $Enums } from "@prisma/client";
+import { cleanupDownloadedFile } from "../services/workers/helpers/removeFile";
 
-// Helper function to get shop by domain
 const getShopByDomain = async (domain: string) => {
   const shop = await prisma.shop.findUnique({
     where: { domain },
@@ -16,17 +16,14 @@ const getShopByDomain = async (domain: string) => {
   return shop;
 };
 
-// Toggle auto sync settings
 const toggleAutoSync = async (shopId: number, enabled: boolean) => {
   console.log(`[toggleAutoSync] Setting auto sync to ${enabled} for shop ${shopId}`);
 
-  // Check if settings exist first
   const existingSettings = await prisma.setting.findUnique({
     where: { shopId }
   });
 
   if (existingSettings) {
-    // Update existing settings
     await prisma.setting.update({
       where: { shopId },
       data: {
@@ -35,7 +32,6 @@ const toggleAutoSync = async (shopId: number, enabled: boolean) => {
       }
     });
   } else {
-    // Create new settings
     await prisma.setting.create({
       data: {
         shopId,
@@ -52,11 +48,9 @@ const toggleAutoSync = async (shopId: number, enabled: boolean) => {
   });
 };
 
-// Start force sync
 const startForceSync = async (shop: { id: number; domain: string }) => {
   console.log(`[startForceSync] Starting force sync for shop ${shop.domain}`);
 
-  // Create a new job for force sync
   const job = await prisma.job.create({
     data: {
       shopId: shop.id,
@@ -65,15 +59,13 @@ const startForceSync = async (shop: { id: number; domain: string }) => {
     }
   });
 
-  // Update the job with the actual job ID
   await prisma.job.update({
     where: { id: job.id },
     data: {
-      logMessage: `Manual sync job created for shop ${shop.domain} for Job ID: ${job.id}`
+      logMessage: `Manual sync job created for shop ${shop.domain} for Task ID: ${job.id}`
     }
   });
 
-  // Create the first process (DOWNLOAD_FILE) for the job
   await prisma.process.create({
     data: {
       jobId: job.id,
@@ -86,15 +78,34 @@ const startForceSync = async (shop: { id: number; domain: string }) => {
 
   return Response.json({
     success: true,
-    message: `Force sync started successfully. Job created for Job ID: ${job.id}`
+    message: `Force sync started successfully. Task created for Task ID: ${job.id}`
   });
 };
 
-// Stop all pending tasks
 const stopPendingTasks = async (shopId: number) => {
   console.log(`[stopPendingTasks] Stopping pending tasks for shop ${shopId}`);
 
-  // Update all pending/processing jobs to failed
+  const pendingJobs = await prisma.job.findMany({
+    where: {
+      shopId,
+      status: {
+        in: [$Enums.Status.PENDING, $Enums.Status.PROCESSING, $Enums.Status.FAILED]
+      }
+    },
+    select: { id: true }
+  });
+
+  console.log(`[stopPendingTasks] Found ${pendingJobs.length} pending jobs to stop`);
+
+  for (const job of pendingJobs) {
+    try {
+      await cleanupDownloadedFile(job.id);
+      console.log(`[stopPendingTasks] Cleaned up file for job ${job.id}`);
+    } catch (error) {
+      console.error(`[stopPendingTasks] Error cleaning up file for job ${job.id}:`, error);
+    }
+  }
+
   const result = await prisma.job.updateMany({
     where: {
       shopId,
@@ -109,7 +120,6 @@ const stopPendingTasks = async (shopId: number) => {
     }
   });
 
-  // Also update all pending/processing processes
   await prisma.process.updateMany({
     where: {
       shopId,
@@ -126,7 +136,7 @@ const stopPendingTasks = async (shopId: number) => {
 
   return Response.json({
     success: true,
-    message: `Stopped ${result.count} pending tasks successfully`
+    message: `Stopped ${result.count} pending tasks`
   });
 };
 

@@ -6,7 +6,7 @@ interface ForceSyncComponentProps {
 
 const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
   return (
-    <Card>
+    // <Card>
       <BlockStack gap="400">
         <BlockStack gap="300">
           <Text as="h3" variant="headingMd">
@@ -26,7 +26,7 @@ const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
           </Box>
         </BlockStack>
       </BlockStack>
-    </Card>
+    // </Card>
   );
 };
 

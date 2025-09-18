@@ -5,14 +5,17 @@ import {
   TextField,
   ProgressBar,
   Banner,
-  Badge
 } from "@shopify/polaris";
+import ProcessLogsSection from "./ProcessLogsSection";
 
 interface Process {
   id: number;
   type: string;
   status: string;
   logMessage: string;
+  retryCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Task {
@@ -43,6 +46,10 @@ const CurrentJobCard = ({
   hasJobError,
   pendingJobsCount
 }: CurrentJobCardProps) => {
+  // Get current active process
+  const currentProcess = task.processes.find(p => p.status === 'PROCESSING') ||
+                        task.processes.find(p => p.status === 'PENDING');
+
   return (
     <Card>
       <BlockStack gap="400">
@@ -55,7 +62,7 @@ const CurrentJobCard = ({
 
         <BlockStack gap="300">
           <TextField
-            label="Job ID:"
+            label="Task ID:"
             value={task.id.toString()}
             disabled
             autoComplete="off"
@@ -78,9 +85,17 @@ const CurrentJobCard = ({
             disabled
             autoComplete="off"
           />
+          {currentProcess && (
+            <TextField
+              label="Current Process:"
+              value={currentProcess.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+              disabled
+              autoComplete="off"
+            />
+          )}
           {task.logMessage && (
             <TextField
-              label="Logs:"
+              label="Task Logs:"
               value={task.logMessage}
               disabled
               autoComplete="off"
@@ -95,6 +110,9 @@ const CurrentJobCard = ({
             tone={isJobCompleted ? "success" : hasJobError ? "critical" : "primary"}
             size="small"
           />
+
+          {/* Process Logs Section */}
+          <ProcessLogsSection processes={task.processes} />
 
           {isJobCompleted && (
             <Banner tone="success" title="Success">

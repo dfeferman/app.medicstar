@@ -85,7 +85,7 @@ const downloadCsvTask = async (process: ProcessWithShop) => {
     console.log(`[downloadCsv] Created PARSE_FILE process for job ${process.jobId}`);
   }
 
-  console.log(`[downloadCsv] ✅ CSV download completed for Job ID: ${process.jobId}`);
+  console.log(`[downloadCsv] ✅ CSV download completed for Task ID: ${process.jobId}`);
 };
 
 export const downloadCsv = async (process: any) => {

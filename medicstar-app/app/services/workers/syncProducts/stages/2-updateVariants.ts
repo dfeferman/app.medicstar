@@ -66,12 +66,30 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
         continue;
       }
 
+      // Log detailed comparison for debugging
+      console.log(`[processVariantBatch] === COMPARING VARIANT ${variant.sku} ===`);
+      console.log(`[processVariantBatch] Existing price: "${existingVariant.price}" (type: ${typeof existingVariant.price})`);
+      console.log(`[processVariantBatch] New price: "${variant.price}" (type: ${typeof variant.price})`);
+      console.log(`[processVariantBatch] Existing quantity: ${existingVariant.inventoryQuantity} (type: ${typeof existingVariant.inventoryQuantity})`);
+      console.log(`[processVariantBatch] New quantity: ${variant.quantity} (type: ${typeof variant.quantity})`);
+
       // Check if update is needed
-      const needsPriceUpdate = existingVariant.price !== variant.price;
+      // Normalize prices to handle decimal precision differences (e.g., "22.40" vs "22.4")
+      const existingPrice = parseFloat(existingVariant.price).toString();
+      const newPrice = parseFloat(variant.price).toString();
+      const needsPriceUpdate = existingPrice !== newPrice;
       const needsQuantityUpdate = existingVariant.inventoryQuantity !== parseInt(variant.quantity);
 
+      console.log(`[processVariantBatch] Normalized existing price: "${existingPrice}"`);
+      console.log(`[processVariantBatch] Normalized new price: "${newPrice}"`);
+      console.log(`[processVariantBatch] Needs price update: ${needsPriceUpdate}`);
+      console.log(`[processVariantBatch] Needs quantity update: ${needsQuantityUpdate}`);
+
       if (needsPriceUpdate || needsQuantityUpdate) {
+        console.log(`[processVariantBatch] ⚠️  VARIANT ${variant.sku} NEEDS UPDATE`);
+
         if (needsPriceUpdate) {
+          console.log(`[processVariantBatch] 📝 PRICE UPDATE: "${existingVariant.price}" → "${variant.price}"`);
           bulkUpdateData.push({
             id: existingVariant.id,
             productId: existingVariant.product.id,
@@ -80,6 +98,7 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
         }
 
         if (needsQuantityUpdate) {
+          console.log(`[processVariantBatch] 📦 QUANTITY UPDATE: ${existingVariant.inventoryQuantity} → ${parseInt(variant.quantity)}`);
           inventoryUpdateData.push({
             inventoryItemId: existingVariant.inventoryItem.id,
             locationId: locationId,
@@ -89,8 +108,10 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
 
         updatedCount++;
       } else {
+        console.log(`[processVariantBatch] ✅ VARIANT ${variant.sku} NO CHANGES NEEDED`);
         skippedCount++;
       }
+      console.log(`[processVariantBatch] === END COMPARISON ===`);
     }
 
     console.log(`[processVariantBatch] ${updatedCount} variants need updates, ${skippedCount} skipped`);

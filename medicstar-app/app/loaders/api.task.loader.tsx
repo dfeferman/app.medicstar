@@ -5,7 +5,8 @@ import prisma from "../db.server";
 export const apiTaskLoader: LoaderFunction = async ({ request }) => {
   const { session } = await authenticate.admin(request);
 
-  const task = await prisma.job.findFirst({
+  // First, try to find an active job (PENDING or PROCESSING)
+  let task = await prisma.job.findFirst({
     where: {
       shop: { domain: session.shop },
       status: {
@@ -20,6 +21,24 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     }
   });
 
+  // If no active job, get the latest completed or failed job
+  if (!task) {
+    task = await prisma.job.findFirst({
+      where: {
+        shop: { domain: session.shop },
+        status: {
+          in: ['COMPLETED', 'FAILED']
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        processes: {
+          orderBy: { createdAt: "asc" }
+        }
+      }
+    });
+  }
+
   const pendingJobsCount = await prisma.job.count({
     where: {
       shop: { domain: session.shop },
@@ -28,10 +47,6 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
       }
     }
   });
-
-  if (!task) {
-    return Response.json({ task: null, pendingJobsCount });
-  }
 
   return Response.json({ task, pendingJobsCount });
 };

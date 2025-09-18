@@ -10,7 +10,7 @@ interface ManualActionsCardProps {
 const ManualActionsCard = ({ isLoading }: ManualActionsCardProps) => {
   return (
     <Card>
-      <BlockStack gap="400">
+      <BlockStack gap="600">
         <Text as="h2" variant="headingLg">
           Manual Settings
         </Text>

@@ -44,10 +44,10 @@ export default function SyncStatusPage() {
     !task.processes.some(p => p.status === 'FAILED');
 
   const isJobCompleted = task &&
-    task.processes.every(p => p.status === 'COMPLETED');
+    (task.status === 'COMPLETED' || task.processes.every(p => p.status === 'COMPLETED'));
 
   const hasJobError = task &&
-    task.processes.some(p => p.status === 'FAILED');
+    (task.status === 'FAILED' || task.processes.some(p => p.status === 'FAILED'));
 
   return (
     <Page>
@@ -65,7 +65,7 @@ export default function SyncStatusPage() {
           />
         ) : (
           <Banner>
-            No sync job found. Start a sync from the settings page.
+            No sync job found. Start a sync from the settings page or wait for the next auto sync.
           </Banner>
         )}
       </BlockStack>

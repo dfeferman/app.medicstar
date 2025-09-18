@@ -40,17 +40,6 @@ model Shop {
   processes      Process[]
   settings       Setting[]
 }
-
-model Contact {
-  id                                  Int       @id @default(autoincrement())
-  shopifyCustomerId                   String
-  email                               String
-  businessCenterContactNo             String
-  businessCenterCustomerTemplateCode  String
-
-  @@index([businessCenterContactNo])
-}
-
 model Job {
   id            Int @id @default(autoincrement())
   status        Status
