@@ -10,7 +10,9 @@ export type OrderProduct = {
   SKU: string;
   quantity: number;
   price: number
-  title: string
+  title: string;
+  lineAmount?: number;
+  lineAmountInclVAT?: number;
 };
 
 export type PaymentTransaction = {
@@ -78,8 +80,8 @@ export async function createOrder(order: OrderInput): Promise<CreateOrderResult>
   const salesLines = (order.products).map((p) => {
     const quantity = p.quantity;
     const unitPrice = p.price;
-    const lineAmount = quantity * unitPrice;
-    const lineAmountInclVAT = lineAmount * (1 + (order.taxPercentageFloat));
+    const lineAmount = p.lineAmount !== undefined ? p.lineAmount : quantity * unitPrice;
+    const lineAmountInclVAT = p.lineAmountInclVAT !== undefined ? p.lineAmountInclVAT : lineAmount * (1 + (order.taxPercentageFloat));
 
     const xml = `
       <x53:Sales_Line>

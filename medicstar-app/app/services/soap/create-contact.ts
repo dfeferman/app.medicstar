@@ -54,13 +54,8 @@ export async function createContact(contact: ContactInput): Promise<string> {
   });
 
   const body = await parseSoapBody(resp);
-  console.log("=== CREATE CONTACT RESPONSE ===");
-  console.log("Parsed Body:", JSON.stringify(body, null, 2));
-  console.log("=== END CREATE CONTACT RESPONSE ===");
-
   const returned = body?.CreateContactResponse?.inboundCreateContact;
   const customerNo = returned?.Contact?.No;
 
-  // console.log("Extracted contact number:", customerNo);
   return String(customerNo ?? "");
 }

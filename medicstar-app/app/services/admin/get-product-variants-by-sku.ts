@@ -7,7 +7,6 @@ type InventoryItem = {
 type ProductItem = {
   id: string;
 }
-
 interface ShopifyVariant {
   id: string;
   inventoryQuantity: number;
@@ -17,9 +16,6 @@ interface ShopifyVariant {
   product: ProductItem;
 }
 
-/**
- * Get product variants by SKU list
- */
 export const getProductVariantsBySku = async (
   skus: string[],
   shopDomain: string
@@ -28,7 +24,6 @@ export const getProductVariantsBySku = async (
     admin: { graphql },
   } = await unauthenticated.admin(shopDomain);
 
-  // Create SKU query string
   const skuQuery = skus.map(sku => `sku:${sku}`).join(" OR ");
 
   const query = `#graphql

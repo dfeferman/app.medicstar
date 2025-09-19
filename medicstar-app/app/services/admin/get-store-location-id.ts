@@ -1,8 +1,5 @@
 import { unauthenticated } from "../../shopify.server";
 
-/**
- * Get the primary location ID for the store
- */
 export const getStoreLocationId = async (shopDomain: string): Promise<string> => {
   const {
     admin: { graphql },
@@ -27,18 +24,11 @@ export const getStoreLocationId = async (shopDomain: string): Promise<string> =>
   }
 
   const locations = responseJson.data.locations.nodes;
-  console.log(`locations>>>>>`, locations);
   const primaryLocation = locations.find((loc: any) => loc.isPrimary) || locations[0];
 
   if (!primaryLocation) {
     throw new Error("No location found for the store");
   }
-
-  console.log(`[getStoreLocationId] Found ${locations.length} locations:`);
-  locations.forEach((loc: any, index: number) => {
-    console.log(`[getStoreLocationId] Location ${index + 1}: ID=${loc.id}, Name="${loc.name}", isPrimary=${loc.isPrimary}`);
-  });
-  console.log(`[getStoreLocationId] Using location: ID=${primaryLocation.id}, Name="${primaryLocation.name}"`);
 
   return primaryLocation.id;
 };

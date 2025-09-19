@@ -9,7 +9,6 @@ embedded = true
 [build]
 dev_store_url = "medicstar-app-dev.myshopify.com"
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2025-07"

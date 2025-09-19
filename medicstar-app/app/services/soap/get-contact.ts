@@ -38,21 +38,11 @@ async function getContactsByEmail(email: string): Promise<any[]> {
 
   const get = (obj: any, key: string) => obj?.[key]?._ ?? obj?.[key] ?? obj?.["contact:" + key]?._ ?? obj?.["contact:" + key];
 
-  // console.log("contacts>>>>>>>>>", contacts);
-  const simplified = contacts.map((c: any) => ({
-    No: get(c, "No"),
-    Name: get(c, "Name"),
-    Email: get(c, "E-Mail") || get(c, "E_Mail"),
-    Phone: get(c, "Phone_No"),
-    Address: get(c, "Address"),
-    City: get(c, "City"),
-    Country: get(c, "Country_Region_Code"),
-  }));
-
-  // Filter results by email (case-insensitive)
-  return simplified.filter((contact: any) =>
-    contact.Email && contact.Email.toLowerCase() === email.toLowerCase()
-  );
+  return contacts
+    .filter((c: any) => {
+      const contactEmail = get(c, "E-Mail") || get(c, "E_Mail");
+      return contactEmail && contactEmail.toLowerCase() === email.toLowerCase();
+    });
 }
 
 export async function getContactByEmail(email: string): Promise<any[]> {

@@ -18,22 +18,17 @@ export const mapCustomerGroup = (groupName: string): string => {
     "Privatkunde": "PRIVAT",
   };
 
-  // Normalize the input: trim whitespace
   const normalizedInput = groupName?.trim();
 
-  // Direct lookup first
   if (groupMap[normalizedInput]) {
     return groupMap[normalizedInput];
   }
 
-  // Case-insensitive lookup
   const lowerInput = normalizedInput?.toLowerCase();
   const lowerKey = Object.keys(groupMap).find(key => key.toLowerCase() === lowerInput);
   if (lowerKey) {
     return groupMap[lowerKey];
   }
 
-  // Default fallback
-  console.warn(`[mapCustomerGroup] Unknown customer group: "${groupName}", defaulting to "ONLINESHOP"`);
   return "ONLINESHOP";
 };

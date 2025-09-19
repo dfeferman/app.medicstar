@@ -13,29 +13,7 @@ export async function runProcessWrapper(
   process: Process,
   taskRunner: (process: ProcessWithShop) => Promise<void>,
 ) {
-  console.log(`[runProcessWrapper] Processing Process ID: ${process.id}`);
-
-  // Increment retry count and mark process as processing
-  await prisma.process.update({
-    where: { id: process.id },
-    data: {
-      status: $Enums.Status.PROCESSING,
-      retryCount: { increment: 1 },
-      updatedAt: new Date(),
-    },
-  });
-
-  // Also increment job retry count
-  await prisma.job.update({
-    where: { id: process.jobId },
-    data: {
-      retryCount: { increment: 1 },
-      updatedAt: new Date(),
-    },
-  });
-
   try {
-    // Get shop information from process
     const shop = await prisma.shop.findUnique({
       where: { id: process.shopId },
       select: { id: true, domain: true }
@@ -45,9 +23,23 @@ export async function runProcessWrapper(
       throw new Error(`Shop not found for process ID: ${process.id}`);
     }
 
-    console.log(`[runProcessWrapper] Using shop domain: ${shop.domain} (ID: ${shop.id})`);
+    await prisma.process.update({
+      where: { id: process.id },
+      data: {
+        status: $Enums.Status.PROCESSING,
+        retryCount: { increment: 1 },
+        updatedAt: new Date(),
+      },
+    });
 
-    // Create process with shop information
+    await prisma.job.update({
+      where: { id: process.jobId },
+      data: {
+        retryCount: { increment: 1 },
+        updatedAt: new Date(),
+      },
+    });
+
     const processWithShop: ProcessWithShop = {
       ...process,
       shop: shop
@@ -55,8 +47,6 @@ export async function runProcessWrapper(
 
     await taskRunner(processWithShop);
   } catch (error) {
-    console.error(`[runProcessWrapper] Process ID: ${process.id} failed:`, error);
-
     await prisma.process.update({
       where: { id: process.id },
       data: {
@@ -65,7 +55,7 @@ export async function runProcessWrapper(
         logMessage: error instanceof Error ? error.message : "Unknown error",
       },
     });
-    throw error; // Re-throw to let the calling function handle it
+    throw error;
   }
 }
 
