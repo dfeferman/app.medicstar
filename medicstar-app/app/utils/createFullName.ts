@@ -1,3 +1,9 @@
 export function createFullName(firstName?: string, lastName?: string): string {
-  return `${firstName || ''} ${lastName || ''}`.trim();
+  const first = firstName?.trim() || '';
+  const last = lastName?.trim() || '';
+
+  if (first) {
+    return `${first} ${last}`.trim();
+  }
+  return last;
 }

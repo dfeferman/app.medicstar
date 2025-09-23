@@ -1,5 +1,6 @@
 import "dotenv/config.js";
 import { NS, envelope, postSoap, parseSoapBody } from "../../../lib/soap";
+import { escapeXml } from "../../utils/escapeXml";
 
 const user = process.env.NAV_USER as string;
 const pass = process.env.NAV_PASS as string;
@@ -11,7 +12,7 @@ async function getContactsByEmail(email: string): Promise<any[]> {
       <filter>
         <Contact_Filter>
           <Field>E_Mail</Field>
-          <Criteria>${email}</Criteria>
+          <Criteria>${escapeXml(email)}</Criteria>
         </Contact_Filter>
       </filter>
       <bookmarkKey></bookmarkKey>

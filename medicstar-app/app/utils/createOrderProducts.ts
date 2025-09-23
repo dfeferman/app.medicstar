@@ -52,19 +52,23 @@ export const createOrderProducts = (payload: OrderPayload) => {
         const quantity = li?.quantity || 0;
 
         const discountedPrice = calculateDiscountedPrice(basePrice, totalDiscount, quantity);
+        const lineAmount = basePrice * quantity;
+        const lineAmountInclVAT = lineAmount * (1 + taxRate);
 
         return {
           SKU: li?.sku,
           quantity: li?.quantity,
           price: discountedPrice,
           title: li?.name,
+          lineAmount: lineAmount,
+          lineAmountInclVAT: lineAmountInclVAT
         };
       }),
 
     {
       ...SHIPPING_LINE_ITEM,
-      price: shippingPrice,
-      lineAmount: shippingPrice,
+      price: parseFloat(shippingPrice),
+      lineAmount: parseFloat(shippingPrice),
       lineAmountInclVAT: calculateShippingPriceWithVAT(shippingPrice, taxRate)
     },
 

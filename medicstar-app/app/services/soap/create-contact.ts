@@ -1,5 +1,6 @@
 import "dotenv/config.js";
 import { NS, envelope, postSoap, parseSoapBody } from "../../../lib/soap";
+import { escapeXml } from "../../utils/escapeXml";
 
 const user = process.env.NAV_USER as string;
 const pass = process.env.NAV_PASS as string;
@@ -15,6 +16,7 @@ export type ContactInput = {
   postCode: string;
   email: string;
   customerTemplateCode: string;
+  vatRegistrationNo?: string;
 };
 
 export async function createContact(contact: ContactInput): Promise<string> {
@@ -22,15 +24,16 @@ export async function createContact(contact: ContactInput): Promise<string> {
   <tns:CreateContact xmlns:tns="${NS.CONTACT_CREATE.TNS}">
     <tns:inboundCreateContact>
       <nav:Contact xmlns:nav="${NS.CONTACT_CREATE.NAV}">
-        <nav:Name>${contact.company}</nav:Name>
-        <nav:Name_2>${contact.fullName}</nav:Name_2>
-        <nav:Address>${contact.address}</nav:Address>
-        <nav:City>${contact.city}</nav:City>
-        <nav:Phone_No>${contact.phoneNumber}</nav:Phone_No>
-        <nav:Country_Region_Code>${contact.countryRegionCode}</nav:Country_Region_Code>
-        <nav:Post_Code>${contact.postCode}</nav:Post_Code>
-        <nav:E-Mail>${contact.email}</nav:E-Mail>
-        <nav:Customer_Templ_Code>${contact.customerTemplateCode}</nav:Customer_Templ_Code>
+        <nav:Name>${escapeXml(contact.company)}</nav:Name>
+        <nav:Name_2>${escapeXml(contact.fullName)}</nav:Name_2>
+        <nav:Address>${escapeXml(contact.address)}</nav:Address>
+        <nav:City>${escapeXml(contact.city)}</nav:City>
+        <nav:Phone_No>${escapeXml(contact.phoneNumber)}</nav:Phone_No>
+        <nav:Country_Region_Code>${escapeXml(contact.countryRegionCode)}</nav:Country_Region_Code>
+        <nav:Post_Code>${escapeXml(contact.postCode)}</nav:Post_Code>
+        <nav:E-Mail>${escapeXml(contact.email)}</nav:E-Mail>
+        <nav:Customer_Templ_Code>${escapeXml(contact.customerTemplateCode)}</nav:Customer_Templ_Code>
+        <nav:VAT_Registration_No>${escapeXml(contact.vatRegistrationNo || '')}</nav:VAT_Registration_No>
         <nav:No></nav:No>
       </nav:Contact>
     </tns:inboundCreateContact>

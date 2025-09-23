@@ -1,5 +1,6 @@
 import { parseStringPromise } from "xml2js";
 import crypto from "node:crypto";
+import { orderLogger } from "./logger";
 
 export const NS = {
   ORDER_CREATE: {
@@ -46,8 +47,15 @@ export function envelope({ action, endpoint, tns, nav, bodyXml }: { action: stri
 export async function postSoap({ endpoint, action, xml, user, pass }: { endpoint: string; action: string; xml: string; user: string; pass: string; }): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
+
+  orderLogger.info('SOAP request sent', {
+    endpoint,
+    action,
+    xmlBytes: Buffer.byteLength(xml, "utf8"),
+    contentType: 'application/soap+xml'
+  });
+
   try {
-    console.log("SOAP POST ->", { endpoint, action, xmlBytes: Buffer.byteLength(xml, "utf8") });
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -57,15 +65,38 @@ export async function postSoap({ endpoint, action, xml, user, pass }: { endpoint
       body: xml,
       signal: controller.signal,
     });
+
     const text = await res.text();
-    console.log("SOAP RESP <-", { status: res.status, ok: res.ok, bytes: Buffer.byteLength(text, "utf8") });
+
+    orderLogger.info('SOAP response received', {
+      endpoint,
+      action,
+      status: res.status,
+      statusText: res.statusText,
+      ok: res.ok,
+      responseBytes: Buffer.byteLength(text, "utf8"),
+      headers: Object.fromEntries(res.headers.entries())
+    });
+
     if (!res.ok) {
-      console.error("SOAP Error Body:", text.slice(0, 2000));
+      orderLogger.error('SOAP request failed', {
+        endpoint,
+        action,
+        status: res.status,
+        statusText: res.statusText,
+        errorBody: text.slice(0, 2000)
+      });
       throw new Error(`HTTP ${res.status} ${res.statusText}`);
     }
+
     return text;
   } catch (err) {
-    console.error("SOAP Request Failed:", err);
+    orderLogger.error('SOAP request error', {
+      endpoint,
+      action,
+      error: err instanceof Error ? err.message : 'Unknown error',
+      stack: err instanceof Error ? err.stack : undefined
+    });
     throw err;
   } finally {
     clearTimeout(timeout);

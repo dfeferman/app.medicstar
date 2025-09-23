@@ -4,7 +4,7 @@ export function createEmptyPaymentFields(): PaymentTransactionFields {
   return {
     TX_ID: "",
     TX_Code: "",
-    TX_Amount: "0",
-    PmtTransactionAmount: "0"
+    TX_Amount: 0,
+    PmtTransactionAmount: 0
   };
 }

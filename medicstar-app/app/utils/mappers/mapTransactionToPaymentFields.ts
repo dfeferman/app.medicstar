@@ -14,7 +14,7 @@ export function mapTransactionToPaymentFields(transactionData: OrderTransactions
   return {
     TX_ID: cleanTransactionId(lastTx.id),
     TX_Code: txCode,
-    TX_Amount: lastTx.amount.toString(),
-    PmtTransactionAmount: lastTx.amount.toString()
+    TX_Amount: lastTx.amount,
+    PmtTransactionAmount: lastTx.amount
   };
 }

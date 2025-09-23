@@ -11,7 +11,7 @@ export function mapGatewayToTxCode(gateway: string): string {
     return 'VORKASSE';
   } else if (gatewayLower.includes('kreditkarte') || gatewayLower.includes('shopify_payments')) {
     return 'SHOPIFYPAY';
-  } else if (gatewayLower.includes('klarna') || gatewayLower.includes('klarna_pay_later')) {
+  } else if (gatewayLower.includes('klarna')) {
     return 'KLARNA';
   } else {
     return '';

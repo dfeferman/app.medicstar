@@ -24,8 +24,8 @@ export type OrderTransactionsData = {
 export type PaymentTransactionFields = {
   TX_ID: string;
   TX_Code: string;
-  TX_Amount: string;
-  PmtTransactionAmount: string;
+  TX_Amount: number;
+  PmtTransactionAmount: number;
 };
 
 

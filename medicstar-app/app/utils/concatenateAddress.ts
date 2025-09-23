@@ -1,6 +1,9 @@
 export function concatenateAddress(address1?: string, address2?: string): string {
-  if (address2) {
-    return `${address1 || ''} ${address2}`.trim();
+  const addr1 = address1?.trim() || '';
+  const addr2 = address2?.trim() || '';
+
+  if (addr2) {
+    return `${addr1} ${addr2}`.trim();
   }
-  return address1 || '';
+  return addr1;
 }
