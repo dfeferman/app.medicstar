@@ -29,7 +29,7 @@ interface Task {
   processes: Process[];
 }
 
-interface CurrentJobCardProps {
+interface TrackingCurrentJobCardProps {
   task: Task;
   currentProgress: number;
   isJobActive: boolean;
@@ -38,14 +38,14 @@ interface CurrentJobCardProps {
   pendingJobsCount: number;
 }
 
-const CurrentJobCard = ({
+const TrackingCurrentJobCard = ({
   task,
   currentProgress,
   isJobActive,
   isJobCompleted,
   hasJobError,
   pendingJobsCount
-}: CurrentJobCardProps) => {
+}: TrackingCurrentJobCardProps) => {
   // Get current active process
   const currentProcess = task.processes.find(p => p.status === 'PROCESSING') ||
                         task.processes.find(p => p.status === 'PENDING');
@@ -54,10 +54,10 @@ const CurrentJobCard = ({
     <Card>
       <BlockStack gap="400">
         <Text as="h2" variant="headingLg">
-          Product Sync Status
+          Tracking Numbers Sync Status
         </Text>
         <Text as="p">
-          This represents the current status of the sync task. Please wait until the product sync is finished. If you see an error, please check the logs for more information.
+          This represents the current status of the tracking sync task. Please wait until the tracking sync is finished. If you see an error, please check the logs for more information.
         </Text>
 
         <BlockStack gap="300">
@@ -116,19 +116,19 @@ const CurrentJobCard = ({
 
           {isJobCompleted && (
             <Banner tone="success" title="Success">
-              <Text as="p">The sync is finished successfully</Text>
+              <Text as="p">The tracking sync is finished successfully</Text>
             </Banner>
           )}
 
           {isJobActive && !hasJobError && (
             <Banner title="Sync in progress">
-              <Text as="p">Please wait until the product sync is finished</Text>
+              <Text as="p">Please wait until the tracking sync is finished</Text>
             </Banner>
           )}
 
           {hasJobError && (
             <Banner tone="critical">
-              <Text as="p">Error: One or more processes failed during sync</Text>
+              <Text as="p">Error: One or more processes failed during tracking sync</Text>
             </Banner>
           )}
         </BlockStack>
@@ -137,4 +137,4 @@ const CurrentJobCard = ({
   );
 };
 
-export default CurrentJobCard;
+export default TrackingCurrentJobCard;

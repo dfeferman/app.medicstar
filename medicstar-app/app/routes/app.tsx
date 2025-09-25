@@ -25,7 +25,7 @@ export default function App() {
           Home
         </Link>
         {/* <Link to="/app/additional">Additional page</Link> */}
-        <Link to="/app/syncSettings">Sync Prices & Stock</Link>
+        <Link to="/app/syncSettings">Settings</Link>
         <Link to="/app/syncStatus">Sync Status</Link>
 
       </NavMenu>

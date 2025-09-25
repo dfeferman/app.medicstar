@@ -27,8 +27,9 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
   };
 
   return (
-    <Form method="post" data-action="stop-tasks" ref={formRef}>
+    <Form method="post" ref={formRef}>
       <input type="hidden" name="actionType" value="stop-pending-tasks" />
+      <input type="hidden" name="syncType" value="product" />
 
       <BlockStack gap="400">
         <BlockStack gap="300">

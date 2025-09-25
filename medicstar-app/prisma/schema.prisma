@@ -77,14 +77,16 @@ model Process {
 
 model Setting {
   id                               Int       @id @default(autoincrement())
-  shopId                           Int       @unique
+  shopId                           Int
   shop                             Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   isAutoSyncEnabled                Boolean   @default(true)
   isStopAllPendingTasks            Boolean   @default(false)
   isForceSyncEnabled               Boolean   @default(false)
+  jobType                          JobType
   createdAt                        DateTime @default(now())
   updatedAt                        DateTime @updatedAt
 
+  @@unique([shopId, jobType], name: "SettingShopIdJobTypeUnique")
   @@index([shopId], name: "SettingShopIdIndex")
   @@index([isAutoSyncEnabled], name: "SettingIsAutoSyncEnabledIndex")
   @@index([isStopAllPendingTasks], name: "SettingIsStopAllPendingTasksIndex")

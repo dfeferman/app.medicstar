@@ -3,11 +3,11 @@ import { useState, useRef } from "react";
 import { Form } from "@remix-run/react";
 import ConfirmationModal from "./ConfirmationModal";
 
-interface ForceSyncComponentProps {
+interface TrackingForceSyncComponentProps {
   isLoading: boolean;
 }
 
-const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
+const TrackingForceSyncComponent = ({ isLoading }: TrackingForceSyncComponentProps) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -29,7 +29,7 @@ const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
   return (
     <Form method="post" ref={formRef}>
       <input type="hidden" name="actionType" value="force-sync" />
-      <input type="hidden" name="syncType" value="product" />
+      <input type="hidden" name="syncType" value="tracking" />
 
       <BlockStack gap="400">
         <BlockStack gap="300">
@@ -37,7 +37,7 @@ const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
             Force Sync
           </Text>
           <Text as="p">
-            Manually trigger an immediate product data synchronization. Use this to push urgent updates outside of the scheduled auto-sync. This doesn't require to stop auto sync.
+            Manually trigger an immediate tracking number synchronization. Use this to push urgent tracking updates outside of the scheduled auto-sync. This doesn't require to stop auto sync.
           </Text>
           <Box>
             <Button
@@ -45,7 +45,7 @@ const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
               variant="primary"
               disabled={isLoading}
             >
-              Force Sync Now
+              Force Tracking Sync Now
             </Button>
           </Box>
         </BlockStack>
@@ -55,13 +55,13 @@ const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
         isOpen={showConfirmModal}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title="Force Sync Now"
-        message="Are you sure you want to start a manual synchronization now? This will create a new task and start the synchronization process."
-        confirmText="Start Sync"
+        title="Force Tracking Sync Now"
+        message="Are you sure you want to start a manual tracking synchronization now? This will create a new task and start the tracking synchronization process."
+        confirmText="Start Tracking Sync"
         loading={isLoading}
       />
     </Form>
   );
 };
 
-export default ForceSyncComponent;
+export default TrackingForceSyncComponent;
