@@ -1,25 +1,18 @@
-import type { LoaderFunction, ActionFunction } from "@remix-run/node";
+import type { LoaderFunction } from "@remix-run/node";
 import { useActionData, useNavigation } from "@remix-run/react";
 import {
   Banner,
   BlockStack,
   Page,
-  Text,
-  InlineStack,
-  Card,
-  Divider,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { useLoaderData } from "@remix-run/react";
 import { settingsLoader } from "../loaders/settings.loader";
-import AutoSyncCard from "../components/AutoSyncCard";
-import ManualActionsCard from "../components/ManualActionsCard";
-import TrackingAutoSyncCard from "../components/TrackingAutoSyncCard";
-import TrackingManualActionsCard from "../components/TrackingManualActionsCard";
+import ProductSyncCard from "../components/product/ProductSyncCard";
+import TrackingSyncCard from "../components/trackingNumbers/TrackingSyncCard";
 
-// Export the single action
 export { action } from "../actions/sync-settings.action";
-
+export const loader: LoaderFunction = settingsLoader;
 interface Settings {
   id: number;
   shopId: number;
@@ -30,8 +23,6 @@ interface Settings {
   createdAt: string;
   updatedAt: string;
 }
-
-export const loader: LoaderFunction = settingsLoader;
 
 export default function SyncSettingsPage() {
   const { productSettings, trackingSettings, cronSchedule, trackingCronSchedule } = useLoaderData<{
@@ -48,47 +39,24 @@ export default function SyncSettingsPage() {
   return (
     <Page>
       <TitleBar title="Sync Settings" />
-      <BlockStack gap="600">
-        {/* Product Sync Section */}
-        <Card>
-          <BlockStack gap="400">
-            <Text as="h2" variant="headingLg">Product Sync</Text>
-            <Text as="p" variant="bodyMd" tone="subdued">
-              Manage automatic and manual synchronization of product data including prices and inventory quantities.
-            </Text>
-            <AutoSyncCard
-              isAutoSyncEnabled={productSettings.isAutoSyncEnabled}
-              isLoading={isSubmitting}
-              cronSchedule={cronSchedule}
-            />
-            <ManualActionsCard isLoading={isSubmitting} />
-          </BlockStack>
-        </Card>
-
-
-        {/* Tracking Sync Section */}
-        <Card>
-          <BlockStack gap="400">
-            <Text as="h2" variant="headingLg">Tracking Numbers Sync</Text>
-            <Text as="p" variant="bodyMd" tone="subdued">
-              Manage automatic and manual synchronization of tracking numbers for orders.
-            </Text>
-            <TrackingAutoSyncCard
-              isAutoSyncEnabled={trackingSettings.isAutoSyncEnabled}
-              isLoading={isSubmitting}
-              cronSchedule={trackingCronSchedule}
-            />
-            <TrackingManualActionsCard isLoading={isSubmitting} />
-          </BlockStack>
-        </Card>
-
-        {actionData && (
+      <BlockStack gap="400">
+         {actionData && (
           <Banner
             tone={actionData.success ? 'success' : 'critical'}
           >
             {actionData.message}
           </Banner>
         )}
+        <ProductSyncCard
+          isAutoSyncEnabled={productSettings.isAutoSyncEnabled}
+          isLoading={isSubmitting}
+          cronSchedule={cronSchedule}
+        />
+        <TrackingSyncCard
+          isAutoSyncEnabled={trackingSettings.isAutoSyncEnabled}
+          isLoading={isSubmitting}
+          cronSchedule={trackingCronSchedule}
+        />
       </BlockStack>
     </Page>
   );

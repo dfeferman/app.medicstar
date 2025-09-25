@@ -3,7 +3,6 @@ import { $Enums } from "@prisma/client";
 
 export const startForceSync = async (shop: { id: number; domain: string }, jobType: $Enums.JobType) => {
   const jobTypeName = jobType === $Enums.JobType.UPDATE_VARIANTS ? 'product' : 'tracking';
-  console.log(`[startForceSync] Starting force ${jobTypeName} sync for shop ${shop.domain}`);
 
   const job = await prisma.job.create({
     data: {

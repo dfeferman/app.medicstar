@@ -6,7 +6,6 @@ import { $Enums } from "@prisma/client";
 export const apiTaskLoader: LoaderFunction = async ({ request }) => {
   const { session } = await authenticate.admin(request);
 
-  // Get product sync job (UPDATE_VARIANTS)
   let productTask = await prisma.job.findFirst({
     where: {
       shop: { domain: session.shop },
@@ -23,7 +22,6 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     }
   });
 
-  // If no active product job, get the latest completed or failed product job
   if (!productTask) {
     productTask = await prisma.job.findFirst({
       where: {
@@ -42,7 +40,6 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     });
   }
 
-  // Get tracking sync job (UPDATE_TRACKING_NUMBERS)
   let trackingTask = await prisma.job.findFirst({
     where: {
       shop: { domain: session.shop },
@@ -59,7 +56,6 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     }
   });
 
-  // If no active tracking job, get the latest completed or failed tracking job
   if (!trackingTask) {
     trackingTask = await prisma.job.findFirst({
       where: {
@@ -78,7 +74,6 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     });
   }
 
-  // Count pending jobs by type
   const pendingProductJobsCount = await prisma.job.count({
     where: {
       shop: { domain: session.shop },

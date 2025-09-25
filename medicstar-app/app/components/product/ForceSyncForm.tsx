@@ -1,13 +1,14 @@
 import { Card, BlockStack, Text, Box, Button } from "@shopify/polaris";
 import { useState, useRef } from "react";
 import { Form } from "@remix-run/react";
-import ConfirmationModal from "./ConfirmationModal";
+import { ActionType, SyncType } from "../../constants/syncTypes";
+import ConfirmationModal from "../shared/modal/ConfirmationModal";
 
-interface TrackingStopTasksComponentProps {
+interface ForceSyncComponentProps {
   isLoading: boolean;
 }
 
-const TrackingStopTasksComponent = ({ isLoading }: TrackingStopTasksComponentProps) => {
+const ForceSyncComponent = ({ isLoading }: ForceSyncComponentProps) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -28,25 +29,24 @@ const TrackingStopTasksComponent = ({ isLoading }: TrackingStopTasksComponentPro
 
   return (
     <Form method="post" ref={formRef}>
-      <input type="hidden" name="actionType" value="stop-pending-tasks" />
-      <input type="hidden" name="syncType" value="tracking" />
+      <input type="hidden" name="actionType" value={ActionType.FORCE_SYNC} />
+      <input type="hidden" name="syncType" value={SyncType.PRODUCT} />
 
       <BlockStack gap="400">
         <BlockStack gap="300">
           <Text as="h3" variant="headingMd">
-            Stop Tasks
+            Force Sync
           </Text>
           <Text as="p">
-            Halt all currently running or pending tracking synchronization tasks. This can be useful if you've initiated an incorrect sync or need to stop processing.
+            Manually trigger an immediate product data synchronization. Use this to push urgent updates outside of the scheduled auto-sync. This doesn't require to stop auto sync.
           </Text>
           <Box>
             <Button
               onClick={handleButtonClick}
-              variant="secondary"
-              tone="critical"
+              variant="primary"
               disabled={isLoading}
             >
-              Stop All Pending Tracking Tasks
+              Force Sync Now
             </Button>
           </Box>
         </BlockStack>
@@ -56,14 +56,13 @@ const TrackingStopTasksComponent = ({ isLoading }: TrackingStopTasksComponentPro
         isOpen={showConfirmModal}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title="Stop All Pending Tracking Tasks"
-        message="Are you sure you want to stop all pending tracking synchronization tasks? This will mark all pending and processing tracking tasks as failed."
-        confirmText="Stop Tracking Tasks"
-        destructive={true}
+        title="Force Sync Now"
+        message="Are you sure you want to start a manual synchronization now? This will create a new task and start the synchronization process."
+        confirmText="Start Sync"
         loading={isLoading}
       />
     </Form>
   );
 };
 
-export default TrackingStopTasksComponent;
+export default ForceSyncComponent;

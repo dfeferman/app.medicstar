@@ -17,14 +17,11 @@ export const stopPendingTasks = async (shopId: number, jobType: $Enums.JobType) 
     select: { id: true }
   });
 
-  console.log(`[stopPendingTasks] Found ${pendingJobs.length} pending ${jobTypeName} sync jobs to stop`);
 
   for (const job of pendingJobs) {
     try {
       await cleanupDownloadedFile(job.id);
-      console.log(`[stopPendingTasks] Cleaned up file for job ${job.id}`);
     } catch (error) {
-      console.error(`[stopPendingTasks] Error cleaning up file for job ${job.id}:`, error);
     }
   }
 

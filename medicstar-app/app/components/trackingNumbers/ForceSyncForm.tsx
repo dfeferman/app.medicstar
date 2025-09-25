@@ -1,7 +1,8 @@
 import { Card, BlockStack, Text, Box, Button } from "@shopify/polaris";
 import { useState, useRef } from "react";
 import { Form } from "@remix-run/react";
-import ConfirmationModal from "./ConfirmationModal";
+import { ActionType, SyncType } from "../../constants/syncTypes";
+import ConfirmationModal from "../shared/modal/ConfirmationModal";
 
 interface TrackingForceSyncComponentProps {
   isLoading: boolean;
@@ -28,8 +29,8 @@ const TrackingForceSyncComponent = ({ isLoading }: TrackingForceSyncComponentPro
 
   return (
     <Form method="post" ref={formRef}>
-      <input type="hidden" name="actionType" value="force-sync" />
-      <input type="hidden" name="syncType" value="tracking" />
+      <input type="hidden" name="actionType" value={ActionType.FORCE_SYNC} />
+      <input type="hidden" name="syncType" value={SyncType.TRACKING} />
 
       <BlockStack gap="400">
         <BlockStack gap="300">

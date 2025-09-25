@@ -5,7 +5,6 @@ export const toggleAutoSync = async (shopId: number, enabled: boolean, jobType: 
   const jobTypeName = jobType === $Enums.JobType.UPDATE_VARIANTS ? 'Product' : 'Tracking';
   console.log(`[toggleAutoSync] Setting ${jobTypeName.toLowerCase()} sync to ${enabled} for shop ${shopId}`);
 
-  // Find existing settings for this shop and job type
   const existingSettings = await prisma.setting.findFirst({
     where: {
       shopId,
@@ -14,7 +13,6 @@ export const toggleAutoSync = async (shopId: number, enabled: boolean, jobType: 
   });
 
   if (existingSettings) {
-    // Update existing settings
     await prisma.setting.update({
       where: { id: existingSettings.id },
       data: {
@@ -23,7 +21,6 @@ export const toggleAutoSync = async (shopId: number, enabled: boolean, jobType: 
       }
     });
   } else {
-    // Create new settings
     await prisma.setting.create({
       data: {
         shopId,

@@ -5,6 +5,7 @@ import { $Enums } from "@prisma/client";
 import { toggleAutoSync } from "./setting-actions/toggleAutoSync";
 import { startForceSync } from "./setting-actions/startForceSync";
 import { stopPendingTasks } from "./setting-actions/stopPendingTasks";
+import { ActionType, SyncType } from "../constants/syncTypes";
 
 const getShopByDomain = async (domain: string) => {
   const shop = await prisma.shop.findUnique({
@@ -27,22 +28,21 @@ export const action: ActionFunction = async ({ request }) => {
 
     const formData = await request.formData();
     const actionType = formData.get("actionType") as string;
-    const syncType = formData.get("syncType") as string; // "product" or "tracking"
+    const syncType = formData.get("syncType") as string;
 
-    // Determine job type based on sync type
-    const jobType = syncType === "tracking"
+    const jobType = syncType === SyncType.TRACKING
       ? $Enums.JobType.UPDATE_TRACKING_NUMBERS
       : $Enums.JobType.UPDATE_VARIANTS;
 
     switch (actionType) {
-      case "toggle-auto-sync":
+      case ActionType.TOGGLE_AUTO_SYNC:
         const enabled = formData.get("enabled") === "true";
         return await toggleAutoSync(shop.id, enabled, jobType);
 
-      case "force-sync":
+      case ActionType.FORCE_SYNC:
         return await startForceSync(shop, jobType);
 
-      case "stop-pending-tasks":
+      case ActionType.STOP_PENDING_TASKS:
         return await stopPendingTasks(shop.id, jobType);
 
       default:
@@ -52,7 +52,6 @@ export const action: ActionFunction = async ({ request }) => {
         }, { status: 400 });
     }
   } catch (error) {
-    console.error(`[sync-settings.action] Error:`, error);
     return Response.json({
       success: false,
       message: error instanceof Error ? error.message : "Unknown error occurred"

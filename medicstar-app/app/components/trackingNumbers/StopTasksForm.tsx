@@ -1,13 +1,14 @@
 import { Card, BlockStack, Text, Box, Button } from "@shopify/polaris";
 import { useState, useRef } from "react";
 import { Form } from "@remix-run/react";
-import ConfirmationModal from "./ConfirmationModal";
+import { ActionType, SyncType } from "../../constants/syncTypes";
+import ConfirmationModal from "../shared/modal/ConfirmationModal";
 
-interface StopTasksComponentProps {
+interface TrackingStopTasksComponentProps {
   isLoading: boolean;
 }
 
-const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
+const TrackingStopTasksComponent = ({ isLoading }: TrackingStopTasksComponentProps) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -28,8 +29,8 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
 
   return (
     <Form method="post" ref={formRef}>
-      <input type="hidden" name="actionType" value="stop-pending-tasks" />
-      <input type="hidden" name="syncType" value="product" />
+      <input type="hidden" name="actionType" value={ActionType.STOP_PENDING_TASKS} />
+      <input type="hidden" name="syncType" value={SyncType.TRACKING} />
 
       <BlockStack gap="400">
         <BlockStack gap="300">
@@ -37,7 +38,7 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
             Stop Tasks
           </Text>
           <Text as="p">
-            Halt all currently running or pending synchronization tasks. This can be useful if you've initiated an incorrect sync or need to stop processing.
+            Halt all currently running or pending tracking synchronization tasks. This can be useful if you've initiated an incorrect sync or need to stop processing.
           </Text>
           <Box>
             <Button
@@ -46,7 +47,7 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
               tone="critical"
               disabled={isLoading}
             >
-              Stop All Pending Tasks
+              Stop All Pending Tracking Tasks
             </Button>
           </Box>
         </BlockStack>
@@ -56,9 +57,9 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
         isOpen={showConfirmModal}
         onClose={handleCancel}
         onConfirm={handleConfirm}
-        title="Stop All Pending Tasks"
-        message="Are you sure you want to stop all pending synchronization tasks? This will mark all pending and processing tasks as failed."
-        confirmText="Stop Tasks"
+        title="Stop All Pending Tracking Tasks"
+        message="Are you sure you want to stop all pending tracking synchronization tasks? This will mark all pending and processing tracking tasks as failed."
+        confirmText="Stop Tracking Tasks"
         destructive={true}
         loading={isLoading}
       />
@@ -66,4 +67,4 @@ const StopTasksComponent = ({ isLoading }: StopTasksComponentProps) => {
   );
 };
 
-export default StopTasksComponent;
+export default TrackingStopTasksComponent;

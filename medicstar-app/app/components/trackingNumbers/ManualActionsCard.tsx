@@ -1,6 +1,6 @@
-import { Card, BlockStack, Text } from "@shopify/polaris";
-import TrackingForceSyncComponent from "./TrackingForceSyncComponent";
-import TrackingStopTasksComponent from "./TrackingStopTasksComponent";
+import { Card, Box, BlockStack, Text } from "@shopify/polaris";
+import TrackingForceSyncComponent from "./ForceSyncForm";
+import TrackingStopTasksComponent from "./StopTasksForm";
 
 interface TrackingManualActionsCardProps {
   isLoading: boolean;
@@ -8,7 +8,8 @@ interface TrackingManualActionsCardProps {
 
 const TrackingManualActionsCard = ({ isLoading }: TrackingManualActionsCardProps) => {
   return (
-    <Card>
+    // <Card>
+    <Box paddingBlock="200">
       <BlockStack gap="600">
         <Text as="h2" variant="headingLg">
           Manual Settings
@@ -16,7 +17,8 @@ const TrackingManualActionsCard = ({ isLoading }: TrackingManualActionsCardProps
         <TrackingForceSyncComponent isLoading={isLoading} />
         <TrackingStopTasksComponent isLoading={isLoading} />
       </BlockStack>
-    </Card>
+    </Box>
+    // </Card>
   );
 };
 

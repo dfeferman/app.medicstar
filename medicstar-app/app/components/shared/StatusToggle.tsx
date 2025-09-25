@@ -1,4 +1,4 @@
-import { Badge, Box, Button, ButtonGroup, InlineGrid, Text } from "@shopify/polaris";
+import { Badge, Box, Button, ButtonGroup, InlineGrid, InlineStack, Text } from "@shopify/polaris";
 import { useCallback, type FC } from "react";
 
 export enum BadgeTone {
@@ -39,14 +39,12 @@ const StatusToggle: FC<StatusToggleProps> = ({
   );
 
   return (
-    <>
-      <InlineGrid columns={["oneThird", "twoThirds"]}>
-        <Box>
-          <Text as="p">{title}</Text>
-        </Box>
-        <Box>
+    <Box width="40%" borderColor="border" borderWidth="025" borderRadius="100" padding="200">
+      <InlineGrid columns={["oneHalf", "oneHalf" ]} alignItems="center">
+        <Text as="p">{title}</Text>
+        <InlineStack align="end">
           <Badge tone={badgeTone}>{badgeText}</Badge>
-        </Box>
+        </InlineStack>
       </InlineGrid>
       {onToggle && (
         <Box>
@@ -68,7 +66,7 @@ const StatusToggle: FC<StatusToggleProps> = ({
           </ButtonGroup>
         </Box>
       )}
-    </>
+    </Box>
   );
 };
 

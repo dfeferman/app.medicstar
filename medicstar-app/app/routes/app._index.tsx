@@ -124,10 +124,11 @@ export default function Index() {
                     App Functionality
                   </Text>
                   <Text variant="bodyMd" as="p">
-                    This application is configured to perform two core functions:
+                    This application is configured to perform three core functions:
                     <List>
-                      <List.Item>Product Synchronization: Updates product prices and inventory in your Shopify store based on an external file.</List.Item>
+                      <List.Item>Product Synchronization: Updates product prices and inventory in the Shopify store based on an external file.</List.Item>
                       <List.Item>Order Management: Transfers Shopify order data to Business Central.</List.Item>
+                      <List.Item>Tracking Number Synchronization: Updates tracking numbers for Shopify orders based on an external file.</List.Item>
                     </List>
                   </Text>
                 </BlockStack>
@@ -136,7 +137,7 @@ export default function Index() {
                     Get started with product update
                   </Text>
                   <Text as="p" variant="bodyMd">
-                    The progress of the most recent sync can be viewed in <Link url="/app/syncStatus">Product Synchronization Status</Link>
+                    The progress of the most recent sync can be viewed in <Link url="/app/syncStatus">Synchronization Status</Link>
                   </Text>
                   <Text as="p" variant="bodyMd">
                     All configurable options are available under <Link url="/app/syncSettings">Settings</Link>

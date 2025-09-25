@@ -1,9 +1,10 @@
-import { Card, BlockStack, Text, Box, Button } from "@shopify/polaris";
+import { Card, BlockStack, Text, Box, Button, InlineGrid } from "@shopify/polaris";
 import { useState, useRef } from "react";
 import { Form } from "@remix-run/react";
-import StatusToggle from "./StatusToggle";
-import ConfirmationModal from "./ConfirmationModal";
-import { formatCronToUTC } from "../utils/cronFormatter";
+import StatusToggle from "../shared/StatusToggle";
+import ConfirmationModal from "../shared/modal/ConfirmationModal";
+import { formatCronToUTC } from "../../utils/cronFormatter";
+import { ActionType, SyncType } from "../../constants/syncTypes";
 
 interface AutoSyncCardProps {
   isAutoSyncEnabled: boolean;
@@ -32,11 +33,12 @@ const AutoSyncCard = ({ isAutoSyncEnabled, isLoading, cronSchedule }: AutoSyncCa
 
   return (
     <Form method="post" ref={formRef}>
-      <input type="hidden" name="actionType" value="toggle-auto-sync" />
-      <input type="hidden" name="syncType" value="product" />
+      <input type="hidden" name="actionType" value={ActionType.TOGGLE_AUTO_SYNC} />
+      <input type="hidden" name="syncType" value={SyncType.PRODUCT} />
       <input type="hidden" name="enabled" value={(!isAutoSyncEnabled).toString()} />
 
-      <Card>
+      {/* <Card> */}
+      <Box paddingBlock="200">
         <BlockStack gap="400">
           <BlockStack gap="300">
             <Text as="h2" variant="headingLg">
@@ -48,13 +50,7 @@ const AutoSyncCard = ({ isAutoSyncEnabled, isLoading, cronSchedule }: AutoSyncCa
             <Text as="p">
               Enable or disable automatic daily synchronization of the product data. This ensures your Shopify store's prices and quantities are always up-to-date. Your update file must be in .xlsx format and contain the following columns: Produktnummer (SKU), Lagerbestand (Quantity), and EK Netto (Price).
             </Text>
-            <Box>
-              <StatusToggle
-                title="Auto Sync Status"
-                isEnabled={isAutoSyncEnabled}
-                disabled={isLoading}
-              />
-            </Box>
+            <InlineGrid columns={["oneThird", "twoThirds" ]} alignItems="center">
             <Box>
               <Button
                 onClick={handleButtonClick}
@@ -64,9 +60,18 @@ const AutoSyncCard = ({ isAutoSyncEnabled, isLoading, cronSchedule }: AutoSyncCa
                 {isAutoSyncEnabled ? 'Disable' : 'Enable'} Auto Sync
               </Button>
             </Box>
+            <Box >
+              <StatusToggle
+                title="Auto Sync Status"
+                isEnabled={isAutoSyncEnabled}
+                disabled={isLoading}
+              />
+            </Box>
+            </InlineGrid>
           </BlockStack>
         </BlockStack>
-      </Card>
+      </Box>
+      {/* </Card> */}
 
       <ConfirmationModal
         isOpen={showConfirmModal}

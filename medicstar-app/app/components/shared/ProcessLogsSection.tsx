@@ -1,12 +1,11 @@
 import {
   BlockStack,
   Text,
-  TextField,
   Collapsible,
   Button,
-  Card,
 } from "@shopify/polaris";
 import { useState } from "react";
+import ProcessCard from "./ProcessCard";
 
 interface Process {
   id: number;
@@ -47,32 +46,12 @@ const ProcessLogsSection = ({ processes }: ProcessLogsSectionProps) => {
       >
         <BlockStack gap="300">
           {processLogs.map((process, index) => (
-            <Card key={process.id}>
-              <BlockStack gap="200">
-                <Text as="h4" variant="headingSm">
-                  {index + 1}. {process.typeDisplay}
-                </Text>
-                <Text as="p" variant="bodySm" tone={process.status === 'COMPLETED' ? 'success' :
-                                                     process.status === 'FAILED' ? 'critical' : 'subdued'}>
-                  Status: {process.status}
-                </Text>
-                {process.logMessage && (
-                  <TextField
-                    label="Log Message:"
-                    value={process.logMessage}
-                    disabled
-                    autoComplete="off"
-                    multiline={3}
-                  />
-                )}
-                <Text as="p" variant="bodySm" tone="subdued">
-                  Created: {new Date(process.createdAt).toLocaleString()}
-                  {process.updatedAt !== process.createdAt && (
-                    <span> • Updated: {new Date(process.updatedAt).toLocaleString()}</span>
-                  )}
-                </Text>
-              </BlockStack>
-            </Card>
+            <ProcessCard
+              key={process.id}
+              process={process}
+              index={index}
+              typeDisplay={process.typeDisplay}
+            />
           ))}
         </BlockStack>
       </Collapsible>
