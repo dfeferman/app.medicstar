@@ -6,7 +6,7 @@ import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
-const DOWNLOADS_FOLDER = "tracking-downloads";
+const DOWNLOADS_FOLDER = "downloads";
 const TRACKING_CSV_URL = process.env.INPUT_TRACKING_FILE_URL as string;
 
 const downloadTrackingCsvTask = async (process: ProcessWithShop) => {
