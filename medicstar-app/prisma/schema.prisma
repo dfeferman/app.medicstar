@@ -37,9 +37,7 @@ model Shop {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   jobs           Job[]
-  trackingJobs   TrackingJob[]
   processes      Process[]
-  trackingProcesses TrackingProcess[]
   settings       Setting[]
 }
 model Job {
@@ -49,6 +47,7 @@ model Job {
   logMessage    String?
   data          Json @default("{}")
   processes     Process[]
+  type          JobType
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   shopId        Int
@@ -74,39 +73,6 @@ model Process {
 
   @@index([status], name: "ProcessStatusIndex")
   @@index([createdAt], name: "ProcessCreatedAtIndex")
-}
-
-model TrackingJob {
-  id            Int @id @default(autoincrement())
-  status        Status
-  retryCount    Int                 @default(0)
-  logMessage    String?
-  data          Json @default("{}")
-  processes     TrackingProcess[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  shopId        Int
-  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([status], name: "TrackingJobStatusIndex")
-  @@index([createdAt], name: "TrackingJobCreatedAtIndex")
-}
-model TrackingProcess {
-  id          Int @id @default(autoincrement())
-  status      Status
-  type        TrackingProcessType
-  retryCount  Int                 @default(0)
-  logMessage  String?
-  data        Json @default("{}")
-  jobId       Int
-  job         TrackingJob @relation(fields: [jobId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  shopId      Int
-  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([status], name: "TrackingProcessStatusIndex")
-  @@index([createdAt], name: "TrackingProcessCreatedAtIndex")
 }
 
 model Setting {
@@ -136,12 +102,11 @@ enum ProcessType {
   DOWNLOAD_FILE
   PARSE_FILE
   UPDATE_VARIANTS
+  UPDATE_TRACKING_NUMBERS
   FINISH
 }
 
-enum TrackingProcessType {
-  DOWNLOAD_FILE
-  PARSE_FILE
+enum JobType {
+  UPDATE_VARIANTS
   UPDATE_TRACKING_NUMBERS
-  FINISH
 }

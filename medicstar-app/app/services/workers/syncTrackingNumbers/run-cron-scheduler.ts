@@ -20,9 +20,10 @@ export const startTrackingCronJob = () => {
       for (const shop of shops) {
         try {
           // Check if there's already a pending or processing tracking job for this shop
-          const existingJob = await prisma.trackingJob.findFirst({
+          const existingJob = await prisma.job.findFirst({
             where: {
               shopId: shop.id,
+              type: $Enums.JobType.UPDATE_TRACKING_NUMBERS,
               status: {
                 in: [$Enums.Status.PENDING, $Enums.Status.PROCESSING]
               }
@@ -34,19 +35,20 @@ export const startTrackingCronJob = () => {
             continue;
           }
 
-          const job = await prisma.trackingJob.create({
+          const job = await prisma.job.create({
             data: {
               shopId: shop.id,
+              type: $Enums.JobType.UPDATE_TRACKING_NUMBERS,
               status: $Enums.Status.PENDING,
               logMessage: `Tracking sync job created for shop ${shop.domain} at ${new Date().toISOString()}`
             }
           });
 
-          await prisma.trackingProcess.create({
+          await prisma.process.create({
             data: {
               jobId: job.id,
               shopId: shop.id,
-              type: $Enums.TrackingProcessType.DOWNLOAD_FILE,
+              type: $Enums.ProcessType.DOWNLOAD_FILE,
               status: $Enums.Status.PENDING,
               logMessage: `Download tracking CSV process created for job ${job.id} in shop ${shop.domain}`
             }

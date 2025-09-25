@@ -1,9 +1,8 @@
 import "dotenv/config.js";
 import * as fs from "fs";
 import prisma from "../../../../db.server";
-import type { TrackingProcess } from '@prisma/client'
 import { $Enums } from "@prisma/client";
-import { runProcessTrackingWrapper, TrackingProcessWithShop } from "../../helpers/runProcessTrackingWrapper";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
 type SupportedCarrier = 'DPD' | 'DHL';
 
@@ -24,8 +23,8 @@ interface JobData extends JsonObject {
   filePath: string;
 }
 
-const parseTrackingCsvTask = async (process: TrackingProcessWithShop) => {
-  const job = await prisma.trackingJob.findUnique({
+const parseTrackingCsvTask = async (process: ProcessWithShop) => {
+  const job = await prisma.job.findUnique({
     where: { id: process.jobId }
   });
 
@@ -100,41 +99,64 @@ const parseTrackingCsvTask = async (process: TrackingProcessWithShop) => {
   console.log(`[parseTrackingCsv] Found ${result.length} orders with tracking data`);
 
   // Update job with parsed data
-  await prisma.trackingJob.update({
+  await prisma.job.update({
     where: { id: process.jobId },
     data: {
       logMessage: `CSV parsed successfully: ${result.length} orders with tracking data`,
       data: JSON.parse(JSON.stringify({
         ...(job.data as JobData),
-        ordersData: result,
-        parseResults: {
-          processedRows: validRows,
-          ordersCount: result.length,
-          completedAt: new Date().toISOString()
-        }
+        totalOrders: result.length,
+        validRows: validRows, // line items within OS orders
+        totalRows: lines.length
       }))
     }
   });
 
   // Mark parse process as completed
-  await prisma.trackingProcess.update({
+  await prisma.process.update({
     where: { id: process.id },
     data: {
       status: $Enums.Status.COMPLETED,
-      logMessage: `Parsed CSV: ${validRows} rows processed, ${result.length} orders found`
+      logMessage: `Parsed CSV: ${validRows} rows processed, ${result.length} orders found`,
+      data: JSON.parse(JSON.stringify({
+        orders: result,
+      })),
+      updatedAt: new Date().toISOString()
     }
   });
 
-  // Create update process
-  await prisma.trackingProcess.create({
-    data: {
-      jobId: process.jobId,
-      shopId: process.shopId,
-      type: $Enums.TrackingProcessType.UPDATE_TRACKING_NUMBERS,
-      status: $Enums.Status.PENDING,
-      logMessage: `Update tracking numbers process created for job ${process.jobId}`
-    }
-  });
+  // Create individual UPDATE_TRACKING_NUMBERS processes for each order
+  for (let i = 0; i < result.length; i++) {
+    const orderData = result[i];
+    await prisma.process.create({
+      data: {
+        jobId: process.jobId,
+        shopId: process.shopId,
+        type: $Enums.ProcessType.UPDATE_TRACKING_NUMBERS,
+        status: $Enums.Status.PENDING,
+        logMessage: `Update tracking numbers for order ${orderData.orderName} (${orderData.lineItems.length} line items)`,
+        data: JSON.parse(JSON.stringify({
+          // CSV File Data (parsed from file)
+          csvData: {
+            orderName: orderData.orderName,
+            trackingNumber: orderData.lineItems[0].trackingNumber,
+            lineItemsCount: orderData.lineItems.length,
+            lineItems: orderData.lineItems.map(item => ({
+              sku: item.sku,
+              trackingNumber: item.trackingNumber,
+              carrierService: item.carrierService
+            }))
+          },
+          // Process Metadata
+          metadata: {
+            orderIndex: i + 1,
+            totalOrders: result.length,
+            isLastOrder: i === result.length - 1 // Mark the last order
+          }
+        }))
+      }
+    });
+  }
 
   // Clean up the downloaded file
   try {
@@ -145,6 +167,6 @@ const parseTrackingCsvTask = async (process: TrackingProcessWithShop) => {
   }
 };
 
-export const parseCsv = async (process: TrackingProcess) => {
-  await runProcessTrackingWrapper(process, parseTrackingCsvTask);
+export const parseCsv = async (process: any) => {
+  await runProcessWrapper(process, parseTrackingCsvTask);
 };

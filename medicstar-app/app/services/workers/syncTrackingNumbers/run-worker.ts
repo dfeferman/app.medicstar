@@ -10,11 +10,12 @@ export const runTrackingWorker = async (): Promise<void> => {
   let pendingJob: any = null;
 
   try {
-    pendingJob = await prisma.trackingJob.findFirst({
+    pendingJob = await prisma.job.findFirst({
       where: {
         status: {
           in: [$Enums.Status.PENDING, $Enums.Status.PROCESSING]
-        }
+        },
+        type: $Enums.JobType.UPDATE_TRACKING_NUMBERS
       },
       orderBy: {
         createdAt: 'asc'
@@ -32,7 +33,7 @@ export const runTrackingWorker = async (): Promise<void> => {
 
     console.log(`[runTrackingWorker] Found pending tracking job ${pendingJob.id}`);
 
-    const pendingProcess = await prisma.trackingProcess.findFirst({
+    const pendingProcess = await prisma.process.findFirst({
       where: {
         jobId: pendingJob.id,
         status: $Enums.Status.PENDING
@@ -52,16 +53,16 @@ export const runTrackingWorker = async (): Promise<void> => {
 
     try {
       switch (pendingProcess.type) {
-        case $Enums.TrackingProcessType.DOWNLOAD_FILE:
+        case $Enums.ProcessType.DOWNLOAD_FILE:
           await downloadCsv(pendingProcess);
           break;
-        case $Enums.TrackingProcessType.PARSE_FILE:
+        case $Enums.ProcessType.PARSE_FILE:
           await parseCsv(pendingProcess);
           break;
-        case $Enums.TrackingProcessType.UPDATE_TRACKING_NUMBERS:
+        case $Enums.ProcessType.UPDATE_TRACKING_NUMBERS:
           await updateTrackingNumbers(pendingProcess);
           break;
-        case $Enums.TrackingProcessType.FINISH:
+        case $Enums.ProcessType.FINISH:
           await finish(pendingProcess);
           break;
       }
@@ -69,7 +70,7 @@ export const runTrackingWorker = async (): Promise<void> => {
       console.error(`[runTrackingWorker] Process ${pendingProcess.type} failed:`, processError);
 
       // Mark the job as failed when any process fails
-      await prisma.trackingJob.update({
+      await prisma.job.update({
         where: { id: pendingJob.id },
         data: {
           status: $Enums.Status.FAILED,
@@ -94,7 +95,7 @@ export const runTrackingWorker = async (): Promise<void> => {
 
     // If we have a pending job, mark it as failed
     if (pendingJob) {
-      await prisma.trackingJob.update({
+      await prisma.job.update({
         where: { id: pendingJob.id },
         data: {
           status: $Enums.Status.FAILED,
@@ -103,11 +104,11 @@ export const runTrackingWorker = async (): Promise<void> => {
       });
     }
 
-    // Handle specific TrackingJob errors
-    if (error instanceof Error && error.message.includes('TrackingJob')) {
-      const jobId = error.message.match(/TrackingJob (\d+)/)?.[1];
+    // Handle specific Job errors
+    if (error instanceof Error && error.message.includes('Job')) {
+      const jobId = error.message.match(/Job (\d+)/)?.[1];
       if (jobId) {
-        await prisma.trackingJob.update({
+        await prisma.job.update({
           where: { id: parseInt(jobId) },
           data: {
             status: $Enums.Status.FAILED,
@@ -123,9 +124,10 @@ export const runTrackingWorker = async (): Promise<void> => {
 };
 
 const fixZombieTrackingJobs = async () => {
-  const result = await prisma.trackingJob.updateMany({
+  const result = await prisma.job.updateMany({
     where: {
       status: $Enums.Status.PROCESSING,
+      type: $Enums.JobType.UPDATE_TRACKING_NUMBERS,
       updatedAt: {
         lte: new Date(Date.now() - 1000 * 60 * 30)
       }
@@ -144,9 +146,10 @@ const fixZombieTrackingJobs = async () => {
 };
 
 const fixZombieTrackingProcesses = async () => {
-  const result = await prisma.trackingProcess.updateMany({
+  const result = await prisma.process.updateMany({
     where: {
       status: $Enums.Status.PROCESSING,
+      type: $Enums.ProcessType.UPDATE_TRACKING_NUMBERS,
       updatedAt: {
         lte: new Date(Date.now() - 1000 * 60 * 30)
       }

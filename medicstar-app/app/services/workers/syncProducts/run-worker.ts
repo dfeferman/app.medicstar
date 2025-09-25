@@ -12,7 +12,8 @@ export const runWorker = async (): Promise<void> => {
       where: {
         status: {
           in: [$Enums.Status.PENDING, $Enums.Status.PROCESSING]
-        }
+        },
+        type: $Enums.JobType.UPDATE_VARIANTS
       },
       orderBy: {
         createdAt: 'asc'
@@ -93,6 +94,7 @@ const fixZombieJobs = async () => {
   const result = await prisma.job.updateMany({
     where: {
       status: $Enums.Status.PROCESSING,
+      type: $Enums.JobType.UPDATE_VARIANTS,
       updatedAt: {
         lte: new Date(Date.now() - 1000 * 60 * 30)
       }
@@ -106,7 +108,7 @@ const fixZombieJobs = async () => {
   });
 
   if (result.count > 0) {
-    console.log(`[fixZombieJobs] Fixed ${result.count} zombie jobs`);
+    console.log(`[fixZombieJobs] Fixed ${result.count} zombie variant jobs`);
   }
 };
 
@@ -114,6 +116,9 @@ const fixZombieProcesses = async () => {
   const result = await prisma.process.updateMany({
     where: {
       status: $Enums.Status.PROCESSING,
+      type: {
+        in: [$Enums.ProcessType.DOWNLOAD_FILE, $Enums.ProcessType.PARSE_FILE, $Enums.ProcessType.UPDATE_VARIANTS, $Enums.ProcessType.FINISH]
+      },
       updatedAt: {
         lte: new Date(Date.now() - 1000 * 60 * 30)
       }
@@ -127,7 +132,7 @@ const fixZombieProcesses = async () => {
   });
 
   if (result.count > 0) {
-    console.log(`[fixZombieProcesses] Fixed ${result.count} zombie processes`);
+    console.log(`[fixZombieProcesses] Fixed ${result.count} zombie variant processes`);
   }
 };
 

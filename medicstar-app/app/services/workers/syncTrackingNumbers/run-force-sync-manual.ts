@@ -18,19 +18,20 @@ const FORCE_TRACKING_SYNC = async () => {
       try {
         console.log(`[FORCE_TRACKING_SYNC] Creating tracking job for shop ${shop.domain}`);
 
-        const job = await prisma.trackingJob.create({
+        const job = await prisma.job.create({
           data: {
             shopId: shop.id,
+            type: $Enums.JobType.UPDATE_TRACKING_NUMBERS,
             status: $Enums.Status.PENDING,
             logMessage: `Manual tracking sync job created for shop ${shop.domain} at ${new Date().toISOString()}`
           }
         });
 
-        await prisma.trackingProcess.create({
+        await prisma.process.create({
           data: {
             jobId: job.id,
             shopId: shop.id,
-            type: $Enums.TrackingProcessType.DOWNLOAD_FILE,
+            type: $Enums.ProcessType.DOWNLOAD_FILE,
             status: $Enums.Status.PENDING,
             logMessage: `Manual download tracking CSV process created for job ${job.id} in shop ${shop.domain}`
           }

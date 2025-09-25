@@ -4,12 +4,12 @@ import * as fs from "fs";
 import * as path from "path";
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
-import { runProcessTrackingWrapper, TrackingProcessWithShop } from "../../helpers/runProcessTrackingWrapper";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
 const DOWNLOADS_FOLDER = "tracking-downloads";
 const TRACKING_CSV_URL = process.env.INPUT_TRACKING_FILE_URL as string;
 
-const downloadTrackingCsvTask = async (process: TrackingProcessWithShop) => {
+const downloadTrackingCsvTask = async (process: ProcessWithShop) => {
   if (!TRACKING_CSV_URL) {
     throw new Error("INPUT_TRACKING_FILE_URL environment variable is not set");
   }
@@ -32,7 +32,7 @@ const downloadTrackingCsvTask = async (process: TrackingProcessWithShop) => {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
 
-  await prisma.trackingJob.update({
+  await prisma.job.update({
     where: {
       id: process.jobId,
       status: $Enums.Status.PENDING
@@ -42,33 +42,37 @@ const downloadTrackingCsvTask = async (process: TrackingProcessWithShop) => {
       logMessage: `Tracking CSV downloaded successfully: ${filePath}`,
       data: {
         filePath: filePath,
-        downloadedAt: new Date().toISOString()
-      }
+      },
+      updatedAt: new Date().toISOString()
     }
   });
 
-  const downloadProcess = await prisma.trackingProcess.findFirst({
+  const downloadProcess = await prisma.process.findFirst({
     where: {
       jobId: process.jobId,
-      type: $Enums.TrackingProcessType.DOWNLOAD_FILE,
+      type: $Enums.ProcessType.DOWNLOAD_FILE,
       status: $Enums.Status.PROCESSING
     }
   });
 
   if (downloadProcess) {
-    await prisma.trackingProcess.update({
+    await prisma.process.update({
       where: { id: downloadProcess.id },
       data: {
         status: $Enums.Status.COMPLETED,
-        logMessage: `Download completed successfully: ${filePath}`
+        logMessage: `Download completed successfully`,
+        data: {
+          filePath: filePath,
+        },
+        updatedAt: new Date().toISOString()
       }
     });
 
-    await prisma.trackingProcess.create({
+    await prisma.process.create({
       data: {
         jobId: process.jobId,
         shopId: process.shopId,
-        type: $Enums.TrackingProcessType.PARSE_FILE,
+        type: $Enums.ProcessType.PARSE_FILE,
         status: $Enums.Status.PENDING,
         logMessage: `Parse tracking CSV process created for job ${process.jobId}`
       }
@@ -77,5 +81,5 @@ const downloadTrackingCsvTask = async (process: TrackingProcessWithShop) => {
 };
 
 export const downloadCsv = async (process: any) => {
-  await runProcessTrackingWrapper(process, downloadTrackingCsvTask);
+  await runProcessWrapper(process, downloadTrackingCsvTask);
 };

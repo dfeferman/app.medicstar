@@ -1,6 +1,6 @@
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
-import { runProcessTrackingWrapper, TrackingProcessWithShop } from "../../helpers/runProcessTrackingWrapper";
+import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 
 type JsonObject = Record<string, unknown>;
 
@@ -10,87 +10,86 @@ interface UpdateResults {
 }
 
 interface JobData extends JsonObject {
-  filePath: string;
   updateResults: UpdateResults;
+  validRows: number;
+  totalRows: number;
 }
 
-const finishTrackingJobTask = async (process: TrackingProcessWithShop) => {
-  const job = await prisma.trackingJob.findUnique({
-    where: { id: process.jobId },
-    include: {
-      processes: true
+const finishTrackingJobTask = async (process: ProcessWithShop) => {
+  const allProcesses = await prisma.process.findMany({
+    where: { jobId: process.jobId },
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      logMessage: true
     }
   });
 
-  if (!job) {
-    throw new Error(`TrackingJob ${process.jobId} not found`);
-  }
+  const completedProcesses = allProcesses.filter(p => p.status === $Enums.Status.COMPLETED);
+  const failedProcesses = allProcesses.filter(p => p.status === $Enums.Status.FAILED);
+  const pendingProcesses = allProcesses.filter(p => p.status === $Enums.Status.PENDING);
+  const processingProcesses = allProcesses.filter(p => p.status === $Enums.Status.PROCESSING && p.id !== process.id);
 
-  // Check if all processes are completed (excluding the current finish process)
-  const incompleteProcesses = job.processes.filter(
-    p => p.id !== process.id && p.status !== $Enums.Status.COMPLETED && p.status !== $Enums.Status.FAILED
-  );
+  // Mark finish process as completed first
+  await prisma.process.update({
+    where: { id: process.id },
+    data: {
+      status: $Enums.Status.COMPLETED,
+      logMessage: `FINISH process completed for tracking job ${process.jobId}`
+    }
+  });
 
-  if (incompleteProcesses.length > 0) {
-    console.log(`[finishTrackingJob] Waiting for ${incompleteProcesses.length} processes to complete`);
+  // If any process failed, mark the job as failed
+  if (failedProcesses.length > 0) {
+    await prisma.job.update({
+      where: { id: process.jobId },
+      data: {
+        status: $Enums.Status.FAILED,
+        logMessage: `Tracking job failed due to ${failedProcesses.length} failed processes: ${failedProcesses.map(p => `${p.type} (${p.logMessage})`).join(', ')}`
+      }
+    });
+
+    console.log(`[finishTrackingJob] ❌ Job ${process.jobId} has ${failedProcesses.length} failed processes`);
     return;
   }
 
-  // Check if any process failed
-  const failedProcesses = job.processes.filter(p => p.status === $Enums.Status.FAILED);
-  const hasFailures = failedProcesses.length > 0;
-
-  // If any process failed, mark the job as failed
-  if (hasFailures) {
-    console.log(`[finishTrackingJob] ❌ Job ${process.jobId} has ${failedProcesses.length} failed processes:`,
-      failedProcesses.map(p => `${p.type} (${p.logMessage})`)
-    );
+  // If there are still pending or processing processes, wait for them
+  if (pendingProcesses.length > 0 || processingProcesses.length > 0) {
+    console.log(`[finishTrackingJob] Waiting for ${pendingProcesses.length + processingProcesses.length} processes to complete`);
+    return;
   }
 
-  // Calculate summary statistics
-  const data = job.data as JobData;
-  const summary = {
-    totalRows: data?.validRows || 0,
-    orderCount: data?.orderCount || 0,
-    successCount: data?.updateResults?.successCount || 0,
-    errorCount: data?.updateResults?.errorCount || 0,
-    failedProcesses: failedProcesses.length,
-    completedAt: new Date().toISOString()
-  };
+  // All processes completed successfully
+  const job = await prisma.job.findUnique({
+    where: { id: process.jobId },
+    select: { data: true }
+  });
 
-  // Update job status
-  const finalStatus = hasFailures ? $Enums.Status.FAILED : $Enums.Status.COMPLETED;
-  const logMessage = hasFailures
-    ? `Tracking job completed with ${failedProcesses.length} failed processes`
-    : `Tracking job completed successfully: ${summary.successCount} orders updated, ${summary.errorCount} errors`;
+  const jobData = job?.data as any;
+  const totalOrders = jobData?.totalOrders || 0;
+  const validRows = jobData?.validRows || 0;
+  const totalRows = jobData?.totalRows || 0;
 
-  await prisma.trackingJob.update({
+  await prisma.job.update({
     where: { id: process.jobId },
     data: {
-      status: finalStatus,
-      logMessage,
+      status: $Enums.Status.COMPLETED,
+      logMessage: `Tracking job completed successfully: All ${completedProcesses.length} order processes completed`,
       data: JSON.parse(JSON.stringify({
-        ...data,
-        summary,
-        finalStatus,
-        completedAt: summary.completedAt
+        ...jobData,
+        totalRows: totalRows,
+        validRows: validRows, // line items within OS orders
+        totalOrders: totalOrders,
+        totalOrdersProcessed: completedProcesses.filter(p => p.type === $Enums.ProcessType.UPDATE_TRACKING_NUMBERS).length,
       }))
     }
   });
 
-  // Mark finish process as completed
-  await prisma.trackingProcess.update({
-    where: { id: process.id },
-    data: {
-      status: $Enums.Status.COMPLETED,
-      logMessage: `Tracking job finished with status: ${finalStatus}`
-    }
-  });
-
-  console.log(`[finishTrackingJob] ✅ Tracking job ${process.jobId} completed with status: ${finalStatus}`);
-  console.log(`[finishTrackingJob] Summary:`, summary);
+  console.log(`[finishTrackingJob] ✅ Tracking job ${process.jobId} completed successfully`);
+  console.log(`[finishTrackingJob] Total orders: ${totalOrders}, Valid rows: ${validRows}, Total rows: ${totalRows}`);
 };
 
 export const finish = async (process: any) => {
-  await runProcessTrackingWrapper(process, finishTrackingJobTask);
+  await runProcessWrapper(process, finishTrackingJobTask);
 };

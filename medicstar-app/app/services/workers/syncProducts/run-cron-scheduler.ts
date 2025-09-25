@@ -21,6 +21,7 @@ export const startDailyCronJob = () => {
           const job = await prisma.job.create({
             data: {
               shopId: shop.id,
+              type: $Enums.JobType.UPDATE_VARIANTS,
               status: $Enums.Status.PENDING,
               logMessage: `Daily sync job created for shop ${shop.domain} at ${new Date().toISOString()}`
             }
