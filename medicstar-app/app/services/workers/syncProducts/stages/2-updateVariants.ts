@@ -132,15 +132,25 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
       }
     });
 
-    await prisma.process.create({
-      data: {
+    const remainingProcesses = await prisma.process.count({
+      where: {
         jobId: process.jobId,
-        shopId: process.shopId,
-        type: $Enums.ProcessType.FINISH,
-        status: $Enums.Status.PENDING,
-        logMessage: `Finish process created for job ${process.jobId}`
+        type: $Enums.ProcessType.UPDATE_VARIANTS,
+        status: { in: [$Enums.Status.PENDING, $Enums.Status.PROCESSING] }
       }
     });
+
+    if (remainingProcesses === 0) {
+      await prisma.process.create({
+        data: {
+          jobId: process.jobId,
+          shopId: process.shopId,
+          type: $Enums.ProcessType.FINISH,
+          status: $Enums.Status.PENDING,
+          logMessage: `Finish process created for job ${process.jobId} - all batches completed`
+        }
+      });
+    }
 };
 
 export const processVariantBatch = async (process: Process) => {
