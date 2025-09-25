@@ -4,7 +4,7 @@ import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrap
 
 interface TrackingJobData {
   filePath: string;
-  totalOrders: number;
+  ordersFoundInCsv: number;
   validLineItemsCount: number;
   totalCsvRows: number;
   totalOrdersProcessed?: number;

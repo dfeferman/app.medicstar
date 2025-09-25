@@ -36,9 +36,9 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
       logMessage: `CSV parsed successfully: ${parsedOrders.length} orders with tracking data`,
       data: JSON.parse(JSON.stringify({
         ...(job.data as JobData),
-        totalOrders: parsedOrders.length,
+        totalCsvRows: totalCsvRows,
         validLineItemsCount: validLineItemsCount,
-        totalCsvRows: totalCsvRows
+        ordersFoundInCsv: parsedOrders.length
       }))
     }
   });
@@ -77,7 +77,7 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
           },
           metadata: {
             orderIndex: i + 1,
-            totalOrders: parsedOrders.length,
+            ordersFoundInCsv: parsedOrders.length,
             isLastOrder: i === parsedOrders.length - 1
           }
         }))

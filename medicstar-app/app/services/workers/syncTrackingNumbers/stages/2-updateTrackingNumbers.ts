@@ -7,7 +7,7 @@ import { TrackingStatus } from "../../../../constants/trackingStatus";
 
 export interface TrackingUpdateProcessMetadata {
   orderIndex: number;
-  totalOrders: number;
+  ordersFoundInCsv: number;
   isLastOrder: boolean;
 }
 
@@ -28,7 +28,7 @@ const updateTrackingNumbersTask = async (process: ProcessWithShop) => {
     orderName: processData.csvData.orderName,
     lineItems: processData.csvData.lineItems
   };
-  const totalOrders = processData.metadata.totalOrders;
+  const ordersFoundInCsv = processData.metadata.ordersFoundInCsv;
   const isLastOrder = processData.metadata.isLastOrder;
 
   if (!orderData) {
@@ -77,7 +77,7 @@ const updateTrackingNumbersTask = async (process: ProcessWithShop) => {
         shopId: process.shopId,
         type: $Enums.ProcessType.FINISH,
         status: $Enums.Status.PENDING,
-        logMessage: `Finish process created for job ${process.jobId} - waiting for all ${totalOrders} order processes to complete`
+        logMessage: `Finish process created for job ${process.jobId} - waiting for all ${ordersFoundInCsv} order processes to complete`
       }
     });
   }

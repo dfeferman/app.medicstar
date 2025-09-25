@@ -15,7 +15,6 @@ interface JobData extends JsonObject {
   filePath: string;
   totalVariants?: number;
   totalBatches?: number;
-  parsedAt?: string;
 }
 interface VariantData {
   sku: string;
@@ -96,8 +95,7 @@ const parseCsvTask = async (processData: ProcessWithShop) => {
       data: {
         ...jobData,
         totalVariants: variants.length,
-        totalBatches: totalBatches,
-        parsedAt: new Date().toISOString()
+        totalBatches: totalBatches
       }
     }
   });

@@ -42,8 +42,7 @@ const downloadCsvTask = async (process: ProcessWithShop) => {
       status: $Enums.Status.PROCESSING,
       logMessage: `CSV downloaded successfully: ${filePath}`,
       data: {
-        filePath: filePath,
-        downloadedAt: new Date().toISOString()
+        filePath: filePath
       }
     }
   });
