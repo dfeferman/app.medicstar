@@ -56,7 +56,7 @@ export const settingsLoader: LoaderFunction = async ({ request }) => {
   return {
     productSettings: productUpdateSettings,
     trackingSettings: trackingUpdateSettings,
-    cronSchedule: process.env.CRON_SCHEDULE || '0 0 * * *',
+    cronSchedule: process.env.PRODUCT_CRON_SCHEDULE || '0 0 * * *',
     trackingCronSchedule: process.env.TRACKING_CRON_SCHEDULE || '0 0 * * *'
   };
 };

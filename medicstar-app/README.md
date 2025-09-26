@@ -1,31 +1,38 @@
 # MedicStar App
 
-A Shopify application that provides integration between Shopify stores and Microsoft Dynamics 365 Business Central (BC). The app handles product price & quantity update in Shopify from external file and order management to streamline business operations by ensuring data consistency between Shopify store and BC ERP system.
+A Shopify application that provides integration between Shopify stores and Microsoft Dynamics 365 Business Central (BC). The app handles product price & quantity update in Shopify from external file, updating tracking numbersin Shopify from external file and order management to streamline business operations by ensuring data consistency between Shopify store and BC ERP system.
 
 ## Features
 
 ### 1. Product Synchronization
 
-- **Price Updates**: Automatically sync product prices from external CSV files to the Shopify store. The time for the sync is configured using a `CRON_SCHEDULE` environment variable. For example:
+- **Price Updates**: Automatically sync product prices from external CSV files to the Shopify store. The time for the sync is configured using a `PRODUCT_CRON_SCHEDULE` environment variable. For example:
 
   ```
   # Daily at midnight UTC (default)
-  CRON_SCHEDULE=0 0 * * *
+  PRODUCT_CRON_SCHEDULE=0 0 * * *
 
   # Daily at 2:00 AM UTC
-  #CRON_SCHEDULE=0 2 * * *
+  #PRODUCT_CRON_SCHEDULE=0 2 * * *
 
   # Daily at 1:30 AM UTC
-  #CRON_SCHEDULE=30 1 * * *
+  #PRODUCT_CRON_SCHEDULE=30 1 * * *
 
   # Daily at 6:00 PM UTC
-  #CRON_SCHEDULE=0 18 * * *
+  #PRODUCT_CRON_SCHEDULE=0 18 * * *
   ```
 - **Inventory Management**: Update stock levels based on external data sources
 - **Settings**: Interface for force sync in case of out of line sync, start/stop automatic sync, stop all pending tasks
-- **Real-time Status**: Monitor sync progress and view detailed logs
+- **Status**: Monitor sync progress and view detailed logs
 
-### 2. Order Management
+### 2. Tracking Number Synchronization
+
+- **Tracking Updates**: Automatically sync tracking numbers from external CSV files to the Shopify store. The time for the sync is configured using a `TRACKING_CRON_SCHEDULE` environment variable
+- **Order Fulfillment**: Update tracking numbers and create fulfillments for Shopify orders
+- **Settings**: Interface for force sync in case of out of line sync, start/stop automatic sync, stop all pending tasks
+- **Status**: Monitor sync progress and view detailed logs
+
+### 3. Order Management
 
 - **Order Transfer**: Automatically transfer Shopify orders to Business Central. Order name (example: OS 0001) is set as Externe Belegnr.
 - **Contact Management**: Create contact records in BC in case the contact with given email and provided phone number does not exist.
@@ -117,6 +124,100 @@ npm run prisma:migrate:deploy
 
 ### Production Development Setup
 
+This section covers deploying the application using Docker for production environments.
+
+#### Prerequisites for Production
+
+- **Docker**: Version 20.10+
+- **Docker Compose**: Version 2.0+ (or `docker compose` command)
+- **Make**: For using the provided Makefile commands (optional but recommended)
+- **Environment Variables**: All required environment variables configured
+
+#### 1. Environment Configuration
+
+Create a `.env` file in the root directory with all required environment variables based on .env.example file
+
+#### 2. Docker Deployment
+
+##### Using Makefile (Recommended)
+
+All available comands can be found in Makefile in the root of the project
+
+```bash
+# Build and start all services
+make build
+make up
+
+# View logs
+make logs
+
+# Stop services
+make down
+
+# Restart services
+make restart
+```
+
+##### Using Docker Compose Directly
+
+```bash
+# Build and start all services
+docker compose -f docker/docker-compose.yaml --env-file .env up -d
+
+# View logs
+docker compose -f docker/docker-compose.yaml logs -f
+
+# Stop services
+docker compose -f docker/docker-compose.yaml down
+```
+
+#### 3. Production Features
+
+The production setup includes:
+
+- **PM2 Process Manager**: Automatic process management and monitoring
+- **Database Migrations**: Automatic database setup on startup
+- **Health Checks**: Built-in health monitoring
+- **Log Rotation**: Automatic log file rotation and cleanup
+- **Auto-restart**: Automatic restart on failure
+
+#### 4. Monitoring and Maintenance
+
+##### View Application Logs
+
+```bash
+# Using Makefile
+make logs
+
+# Using Docker Compose
+docker compose -f docker/docker-compose.yaml logs -f app
+```
+
+##### Database Management
+
+```bash
+# Access database
+make db-shell
+
+# Run migrations manually
+make db-migrate
+
+# Backup database
+make db-backup
+```
+
+##### Process Management
+
+```bash
+# View PM2 status
+make pm2-status
+
+# Restart workers
+make pm2-restart
+
+# View PM2 logs
+make pm2-logs
+```
 
 ## Database Schema
 

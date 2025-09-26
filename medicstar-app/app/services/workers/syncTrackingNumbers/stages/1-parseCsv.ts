@@ -67,8 +67,6 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
         data: JSON.parse(JSON.stringify({
           csvData: {
             orderName: orderData.orderName,
-            trackingNumber: orderData.lineItems[0].trackingNumber,
-            lineItemsCount: orderData.lineItems.length,
             lineItems: orderData.lineItems.map(item => ({
               sku: item.sku,
               trackingNumber: item.trackingNumber,
@@ -76,7 +74,6 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
             }))
           },
           metadata: {
-            orderIndex: i + 1,
             ordersFoundInCsv: parsedOrders.length,
             isLastOrder: i === parsedOrders.length - 1
           }

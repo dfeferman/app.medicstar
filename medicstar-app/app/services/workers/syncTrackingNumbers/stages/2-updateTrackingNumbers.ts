@@ -6,7 +6,6 @@ import { OrderData, LineItem } from "../../../../utils/trackingCsvParser";
 import { TrackingStatus } from "../../../../constants/trackingStatus";
 
 export interface TrackingUpdateProcessMetadata {
-  orderIndex: number;
   ordersFoundInCsv: number;
   isLastOrder: boolean;
 }
@@ -14,8 +13,6 @@ export interface TrackingUpdateProcessMetadata {
 export interface TrackingUpdateProcessData {
   csvData: {
     orderName: string;
-    trackingNumber: string;
-    lineItemsCount: number;
     lineItems: Array<LineItem>;
   };
   metadata: TrackingUpdateProcessMetadata;
@@ -56,8 +53,6 @@ const updateTrackingNumbersTask = async (process: ProcessWithShop) => {
       data: JSON.parse(JSON.stringify({
         csvData: {
           orderName: orderData.orderName,
-          trackingNumber: orderData.lineItems[0].trackingNumber,
-          lineItemsCount: orderData.lineItems.length,
           lineItems: orderData.lineItems.map(item => ({
             sku: item.sku,
             trackingNumber: item.trackingNumber,
