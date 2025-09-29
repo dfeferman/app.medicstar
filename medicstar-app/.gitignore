@@ -27,3 +27,4 @@ database.sqlite
 # Ignore log files
 /logs
 *.log
+**/logs/

@@ -7,6 +7,7 @@ import { getStoreLocationId } from "../../../admin/get-store-location-id";
 import { setInventoryQuantities } from "../../../admin/set-inventory-quantities";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 import { syncProductsLogger } from "../../../../../lib/logger";
+import { validateNonEmptyValue } from "../../../../utils/variantValidation";
 interface VariantData {
   sku: string;
   price: string;
@@ -43,6 +44,7 @@ interface InventoryUpdateData {
   locationId: string;
   quantity: number;
 }
+
 
 const processVariantBatchTask = async (process: ProcessWithShop) => {
     const processData = process.data as unknown as ProcessData;
@@ -89,11 +91,57 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
       }
 
       const currentShopifyPrice = parseFloat(existingShopifyVariant.price).toString();
-      const csvPrice = parseFloat(csvVariant.price).toString();
-      const needsPriceUpdate = currentShopifyPrice !== csvPrice;
-      const needsQuantityUpdate = existingShopifyVariant.inventoryQuantity !== parseInt(csvVariant.quantity);
+
+      // Validate price
+      const priceValidation = validateNonEmptyValue(csvVariant.price);
+      if (!priceValidation.isValid) {
+        syncProductsLogger.warn('Skipping variant with invalid price', {
+          sku: csvVariant.sku,
+          price: csvVariant.price,
+          skipReason: priceValidation.skipReason
+        });
+        skippedCount++;
+        continue;
+      }
+
+      // Validate inventory
+      const inventoryValidation = validateNonEmptyValue(csvVariant.quantity);
+      if (!inventoryValidation.isValid) {
+        syncProductsLogger.warn('Skipping variant with invalid inventory', {
+          sku: csvVariant.sku,
+          quantity: csvVariant.quantity,
+          skipReason: inventoryValidation.skipReason
+        });
+        skippedCount++;
+        continue;
+      }
+
+      const csvPrice = priceValidation.parsedValue;
+      const csvQuantity = inventoryValidation.parsedValue;
+
+      const currentPriceRounded = parseFloat(currentShopifyPrice).toFixed(2);
+      const csvPriceRounded = parseFloat(csvPrice).toFixed(2);
+
+      const needsPriceUpdate = currentPriceRounded !== csvPriceRounded;
+      const needsQuantityUpdate = existingShopifyVariant.inventoryQuantity !== parseInt(csvQuantity);
 
       if (needsPriceUpdate || needsQuantityUpdate) {
+        // console.log(`🔄 UPDATING PRODUCT:`, {
+        //   sku: csvVariant.sku,
+        //   price: {
+        //     current: currentShopifyPrice,
+        //     new: csvPrice,
+        //     currentRounded: currentPriceRounded,
+        //     newRounded: csvPriceRounded,
+        //     needsUpdate: needsPriceUpdate
+        //   },
+        //   inventory: {
+        //     current: existingShopifyVariant.inventoryQuantity,
+        //     new: parseInt(csvQuantity),
+        //     needsUpdate: needsQuantityUpdate
+        //   }
+        // });
+
         if (needsPriceUpdate) {
           priceUpdateData.push({
             id: existingShopifyVariant.id,
@@ -106,12 +154,22 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
           inventoryUpdateData.push({
             inventoryItemId: existingShopifyVariant.inventoryItem.id,
             locationId: locationId,
-            quantity: parseInt(csvVariant.quantity)
+            quantity: parseInt(csvQuantity)
           });
         }
 
         updatedCount++;
       } else {
+        // console.log(`⏭️ SKIPPING PRODUCT (no changes needed):`, {
+        //   sku: csvVariant.sku,
+        //   price: {
+        //     current: currentShopifyPrice,
+        //     csv: csvPrice,
+        //     currentRounded: currentPriceRounded,
+        //     csvRounded: csvPriceRounded
+        //   },
+        //   inventory: { current: existingShopifyVariant.inventoryQuantity, csv: parseInt(csvQuantity) }
+        // });
         skippedCount++;
       }
     }

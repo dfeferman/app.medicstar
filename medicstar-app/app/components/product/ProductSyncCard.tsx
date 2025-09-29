@@ -14,7 +14,7 @@ const ProductSyncCard = ({ isAutoSyncEnabled, isLoading, cronSchedule }: Product
       <BlockStack gap="400">
         <Text as="h2" variant="headingLg">Product Sync</Text>
         <Text as="p" variant="bodyMd" tone="subdued">
-          Manage automatic and manual synchronization of product data including prices and inventory quantities.
+          Handle both automatic and manual synchronization of product data, including price and inventory updates.  To maintain data integrity, variants not found in Shopify, or those with missing price or quantity fields, are skipped
         </Text>
         <AutoSyncForm
           isAutoSyncEnabled={isAutoSyncEnabled}

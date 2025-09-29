@@ -6,12 +6,54 @@ import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrap
 import { parseTrackingCsv } from "../../../../utils/trackingCsvParser";
 import { Process } from "@prisma/client";
 import { trackNumbersLogger } from "../../../../../lib/logger";
+import { cleanupDownloadedFile } from "../../helpers/removeFile";
 
 type JsonObject = Record<string, unknown>;
 
 interface JobData extends JsonObject {
   filePath: string;
 }
+
+interface OrderData {
+  orderName: string;
+  lineItems: Array<{
+    sku: string;
+    trackingNumber: string;
+    carrierService: string;
+  }>;
+}
+
+const createTrackingNumberUpdateProcesses = async (
+  parsedOrders: OrderData[],
+  process: ProcessWithShop
+): Promise<void> => {
+  for (let i = 0; i < parsedOrders.length; i++) {
+    const orderData = parsedOrders[i];
+    await prisma.process.create({
+      data: {
+        jobId: process.jobId,
+        shopId: process.shopId,
+        type: $Enums.ProcessType.UPDATE_TRACKING_NUMBERS,
+        status: $Enums.Status.PENDING,
+        logMessage: `Update tracking numbers for order ${orderData.orderName} (${orderData.lineItems.length} line items)`,
+        data: JSON.parse(JSON.stringify({
+          csvData: {
+            orderName: orderData.orderName,
+            lineItems: orderData.lineItems.map(item => ({
+              sku: item.sku,
+              trackingNumber: item.trackingNumber,
+              carrierService: item.carrierService
+            }))
+          },
+          metadata: {
+            ordersFoundInCsv: parsedOrders.length,
+            isLastOrder: i === parsedOrders.length - 1
+          }
+        }))
+      }
+    });
+  }
+};
 
 const parseTrackingCsvTask = async (process: ProcessWithShop) => {
   trackNumbersLogger.info('Starting tracking CSV parsing', {
@@ -70,41 +112,25 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
     }
   });
 
-  for (let i = 0; i < parsedOrders.length; i++) {
-    const orderData = parsedOrders[i];
+  if (parsedOrders.length === 0) {
+    trackNumbersLogger.info('No orders starting with OS found in CSV, creating finish process', {
+      jobId: process.jobId,
+      processId: process.id
+    });
+
     await prisma.process.create({
       data: {
         jobId: process.jobId,
         shopId: process.shopId,
-        type: $Enums.ProcessType.UPDATE_TRACKING_NUMBERS,
+        type: $Enums.ProcessType.FINISH,
         status: $Enums.Status.PENDING,
-        logMessage: `Update tracking numbers for order ${orderData.orderName} (${orderData.lineItems.length} line items)`,
-        data: JSON.parse(JSON.stringify({
-          csvData: {
-            orderName: orderData.orderName,
-            lineItems: orderData.lineItems.map(item => ({
-              sku: item.sku,
-              trackingNumber: item.trackingNumber,
-              carrierService: item.carrierService
-            }))
-          },
-          metadata: {
-            ordersFoundInCsv: parsedOrders.length,
-            isLastOrder: i === parsedOrders.length - 1
-          }
-        }))
+        logMessage: `Finish process created for job ${process.jobId} - no orders found in CSV`
       }
     });
+  } else {
+    await createTrackingNumberUpdateProcesses(parsedOrders, process);
   }
-  try {
-    fs.unlinkSync(filePath);
-    trackNumbersLogger.info('Tracking CSV file cleaned up', { filePath });
-  } catch (error) {
-    trackNumbersLogger.warn('Failed to clean up tracking CSV file', {
-      filePath,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
+  await cleanupDownloadedFile(process.jobId);
 };
 
 export const parseCsv = async (process: Process) => {

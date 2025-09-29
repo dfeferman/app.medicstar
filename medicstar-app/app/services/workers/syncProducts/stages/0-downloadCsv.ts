@@ -1,57 +1,18 @@
 import "dotenv/config.js";
-import axios from "axios";
-import * as fs from "fs";
-import * as path from "path";
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 import { syncProductsLogger } from "../../../../../lib/logger";
-
-const DOWNLOADS_FOLDER = "downloads";
-const EXCEL_URL = process.env.INPUT_PRODUCT_FILE_URL as string;
+import { downloadProductsFileFromSftp } from "../../../../utils/sftp/downloadProductsFile";
 
 const downloadCsvTask = async (process: ProcessWithShop) => {
-  syncProductsLogger.info('Starting CSV download', {
+  syncProductsLogger.info('Starting products file download from SFTP', {
     jobId: process.jobId,
     processId: process.id,
     shopDomain: process.shop.domain
   });
 
-  if (!EXCEL_URL) {
-    throw new Error("INPUT_PRODUCT_FILE_URL environment variable is not set");
-  }
-
-  if (!fs.existsSync(DOWNLOADS_FOLDER)) {
-    fs.mkdirSync(DOWNLOADS_FOLDER, { recursive: true });
-  }
-
-  const response = await axios.get(EXCEL_URL, { responseType: "stream" });
-  const filePath = path.join(DOWNLOADS_FOLDER, `products_${Date.now()}.xlsx`);
-
-  await new Promise<void>((resolve, reject) => {
-    const writer = fs.createWriteStream(filePath);
-    response.data.pipe(writer);
-    writer.on("finish", resolve);
-    writer.on("error", reject);
-  });
-
-
-  if (response.status !== 200) {
-    syncProductsLogger.error('Failed to download CSV file', {
-      jobId: process.jobId,
-      processId: process.id,
-      status: response.status,
-      statusText: response.statusText
-    });
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-
-  syncProductsLogger.info('CSV file downloaded successfully', {
-    jobId: process.jobId,
-    processId: process.id,
-    filePath,
-    fileSize: response.headers['content-length']
-  });
+  const filePath = await downloadProductsFileFromSftp();
 
   await prisma.job.update({
     where: {

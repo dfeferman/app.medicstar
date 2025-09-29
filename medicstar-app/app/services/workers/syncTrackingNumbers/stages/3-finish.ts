@@ -70,26 +70,49 @@ const finishTrackingJobTask = async (process: ProcessWithShop) => {
 
   const jobData = job?.data as unknown as TrackingJobData;
   const completedOrderProcesses = completedProcesses.filter(p => p.type === $Enums.ProcessType.UPDATE_TRACKING_NUMBERS);
+  const ordersFoundInCsv = jobData?.ordersFoundInCsv || 0;
 
-  trackNumbersLogger.info('Tracking job completed successfully', {
-    jobId: process.jobId,
-    processId: process.id,
-    totalProcesses: completedProcesses.length,
-    completedOrderProcesses: completedOrderProcesses.length,
-    failedProcesses: failedProcesses.length
-  });
+  if (ordersFoundInCsv === 0) {
+    trackNumbersLogger.info('Tracking job completed - no orders found in CSV', {
+      jobId: process.jobId,
+      processId: process.id,
+      totalProcesses: completedProcesses.length,
+      ordersFoundInCsv: 0,
+      failedProcesses: failedProcesses.length
+    });
 
-  await prisma.job.update({
-    where: { id: process.jobId },
-    data: {
-      status: $Enums.Status.COMPLETED,
-      logMessage: `Tracking job completed successfully: All ${completedProcesses.length} order processes completed`,
-      data: JSON.parse(JSON.stringify({
-        ...jobData,
-        totalOrdersProcessed: completedOrderProcesses.length,
-      }))
-    }
-  });
+    await prisma.job.update({
+      where: { id: process.jobId },
+      data: {
+        status: $Enums.Status.COMPLETED,
+        logMessage: `Tracking job completed successfully: No orders starting with OS found in CSV file (0 orders to process)`,
+        data: JSON.parse(JSON.stringify({
+          ...jobData,
+          totalOrdersProcessed: 0,
+        }))
+      }
+    });
+  } else {
+    trackNumbersLogger.info('Tracking job completed successfully', {
+      jobId: process.jobId,
+      processId: process.id,
+      totalProcesses: completedProcesses.length,
+      completedOrderProcesses: completedOrderProcesses.length,
+      failedProcesses: failedProcesses.length
+    });
+
+    await prisma.job.update({
+      where: { id: process.jobId },
+      data: {
+        status: $Enums.Status.COMPLETED,
+        logMessage: `Tracking job completed successfully: All ${completedProcesses.length} order processes completed`,
+        data: JSON.parse(JSON.stringify({
+          ...jobData,
+          totalOrdersProcessed: completedOrderProcesses.length,
+        }))
+      }
+    });
+  }
 };
 
 export const finish = async (process: any) => {

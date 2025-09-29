@@ -27,7 +27,7 @@ export const runTrackingWorker = async (): Promise<void> => {
     });
 
     if (!pendingJob) {
-      trackNumbersLogger.info('No pending tracking jobs found, sleeping...');
+      // trackNumbersLogger.info('No pending tracking jobs found, sleeping...');
       await sleep(1000);
       return runTrackingWorker();
     }
@@ -45,7 +45,7 @@ export const runTrackingWorker = async (): Promise<void> => {
     });
 
     if (!pendingProcess) {
-      trackNumbersLogger.info('No pending processes for tracking job, sleeping...', { jobId: pendingJob.id });
+      // trackNumbersLogger.info('No pending processes for tracking job, sleeping...', { jobId: pendingJob.id });
       await sleep(1000);
       return runTrackingWorker();
     }

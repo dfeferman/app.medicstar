@@ -1,7 +1,6 @@
 import { $Enums } from "@prisma/client";
 import prisma from "../../../../db.server";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
-import { cleanupDownloadedFile } from "../../helpers/removeFile";
 import { syncProductsLogger } from "../../../../../lib/logger";
 
 const finishTask = async (process: ProcessWithShop) => {
@@ -50,7 +49,6 @@ const finishTask = async (process: ProcessWithShop) => {
       }
     });
 
-    await cleanupDownloadedFile(process.jobId);
     return;
   }
 
@@ -74,7 +72,6 @@ const finishTask = async (process: ProcessWithShop) => {
     }
   });
 
-  await cleanupDownloadedFile(process.jobId);
 };
 
 export const finish = async (process: any) => {

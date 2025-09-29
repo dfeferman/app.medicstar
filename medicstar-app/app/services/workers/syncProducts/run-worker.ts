@@ -25,7 +25,7 @@ export const runWorker = async (): Promise<void> => {
     });
 
     if (!pendingJob) {
-      syncProductsLogger.info('No pending jobs found, sleeping...');
+      // syncProductsLogger.info('No pending jobs found, sleeping...');
       await sleep(1000);
       return runWorker();
     }
@@ -43,7 +43,7 @@ export const runWorker = async (): Promise<void> => {
     });
 
     if (!pendingProcess) {
-      syncProductsLogger.info('No pending processes for job, sleeping...', { jobId: pendingJob.id });
+      // syncProductsLogger.info('No pending processes for job, sleeping...', { jobId: pendingJob.id });
       await sleep(1000);
       return runWorker();
     }

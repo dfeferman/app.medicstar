@@ -8,6 +8,7 @@ import prisma from "../../../../db.server";
 import { buildLowerKeyMap, findFirstMatchingHeader, convertToStringOrEmpty, convertToIntegerOrZero } from "../../../../utils/xlsx";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 import { syncProductsLogger } from "../../../../../lib/logger";
+import { cleanupDownloadedFile } from "../../helpers/removeFile";
 
 type CsvRowData = Record<string, unknown>;
 type JsonObject = Record<string, unknown>;
@@ -27,7 +28,7 @@ const BATCH_SIZE = 250;
 const headerAliases: Record<string, string[]> = {
   sku: ["produktnummer"],
   quantity: ["lagerbestand"],
-  price: ["ek netto"],
+  price: ["ek netto", "preis netto"],
 };
 
 const parseCsvTask = async (processData: ProcessWithShop) => {
@@ -150,6 +151,8 @@ const parseCsvTask = async (processData: ProcessWithShop) => {
       });
     }
   }
+
+  await cleanupDownloadedFile(processData.jobId);
 };
 
 export const parseCsv = async (process: Process) => {

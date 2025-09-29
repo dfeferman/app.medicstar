@@ -1,9 +1,16 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const { combine, timestamp, json } = winston.format;
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
+const logsDir = path.join(projectRoot, 'logs');
 
 export const logger = winston.createLogger({
   level: isDevelopment ? 'verbose' : 'error',
@@ -16,7 +23,7 @@ export const logger = winston.createLogger({
       ),
     }),
     new DailyRotateFile({
-      filename: './logs/medicstar-%DATE%.log',
+      filename: path.join(logsDir, 'medicstar-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
       maxSize: '20m',
@@ -37,7 +44,7 @@ export const orderLogger = winston.createLogger({
       ),
     }),
     new DailyRotateFile({
-      filename: './logs/orders-%DATE%.log',
+      filename: path.join(logsDir, 'orders-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
       maxSize: '10m',
@@ -58,7 +65,7 @@ export const trackNumbersLogger = winston.createLogger({
       ),
     }),
     new DailyRotateFile({
-      filename: './logs/track-numbers-%DATE%.log',
+      filename: path.join(logsDir, 'track-numbers-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
       maxSize: '10m',
@@ -79,7 +86,7 @@ export const syncProductsLogger = winston.createLogger({
       ),
     }),
     new DailyRotateFile({
-      filename: './logs/sync-products-%DATE%.log',
+      filename: path.join(logsDir, 'sync-products-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
       maxSize: '10m',
