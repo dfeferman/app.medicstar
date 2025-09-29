@@ -1,6 +1,7 @@
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
+import { trackNumbersLogger } from "../../../../../lib/logger";
 
 interface TrackingJobData {
   filePath: string;
@@ -11,6 +12,12 @@ interface TrackingJobData {
 }
 
 const finishTrackingJobTask = async (process: ProcessWithShop) => {
+  trackNumbersLogger.info('Starting tracking job finish process', {
+    jobId: process.jobId,
+    processId: process.id,
+    shopDomain: process.shop.domain
+  });
+
   const allProcesses = await prisma.process.findMany({
     where: { jobId: process.jobId },
     select: {
@@ -35,6 +42,13 @@ const finishTrackingJobTask = async (process: ProcessWithShop) => {
   });
 
   if (failedProcesses.length > 0) {
+    trackNumbersLogger.error('Tracking job failed due to failed processes', {
+      jobId: process.jobId,
+      processId: process.id,
+      failedProcessCount: failedProcesses.length,
+      failedProcesses: failedProcesses.map(p => ({ id: p.id, type: p.type, logMessage: p.logMessage }))
+    });
+
     await prisma.job.update({
       where: { id: process.jobId },
       data: {
@@ -56,6 +70,14 @@ const finishTrackingJobTask = async (process: ProcessWithShop) => {
 
   const jobData = job?.data as unknown as TrackingJobData;
   const completedOrderProcesses = completedProcesses.filter(p => p.type === $Enums.ProcessType.UPDATE_TRACKING_NUMBERS);
+
+  trackNumbersLogger.info('Tracking job completed successfully', {
+    jobId: process.jobId,
+    processId: process.id,
+    totalProcesses: completedProcesses.length,
+    completedOrderProcesses: completedOrderProcesses.length,
+    failedProcesses: failedProcesses.length
+  });
 
   await prisma.job.update({
     where: { id: process.jobId },

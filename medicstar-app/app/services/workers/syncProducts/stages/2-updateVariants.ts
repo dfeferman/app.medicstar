@@ -6,6 +6,7 @@ import { updateProductVariantsBulk } from "../../../admin/update-product-variant
 import { getStoreLocationId } from "../../../admin/get-store-location-id";
 import { setInventoryQuantities } from "../../../admin/set-inventory-quantities";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
+import { syncProductsLogger } from "../../../../../lib/logger";
 interface VariantData {
   sku: string;
   price: string;
@@ -45,6 +46,15 @@ interface InventoryUpdateData {
 
 const processVariantBatchTask = async (process: ProcessWithShop) => {
     const processData = process.data as unknown as ProcessData;
+
+    syncProductsLogger.info('Starting variant batch processing', {
+      jobId: process.jobId,
+      processId: process.id,
+      shopDomain: process.shop.domain,
+      batchNumber: processData.batchNumber,
+      totalBatches: processData.totalBatches
+    });
+
     const csvVariants: VariantData[] = processData.variants || [];
 
     if (csvVariants.length === 0) {
@@ -107,22 +117,53 @@ const processVariantBatchTask = async (process: ProcessWithShop) => {
     }
 
     if (priceUpdateData.length > 0) {
+      syncProductsLogger.info('Updating product prices', {
+        jobId: process.jobId,
+        processId: process.id,
+        priceUpdateCount: priceUpdateData.length
+      });
+
       const result = await updateProductVariantsBulk(priceUpdateData, process.shop.domain);
 
       if (result.userErrors && result.userErrors.length > 0) {
         const errorMessages = result.userErrors.map(err => err.message).join('; ');
+        syncProductsLogger.error('Shopify price update failed', {
+          jobId: process.jobId,
+          processId: process.id,
+          errors: errorMessages
+        });
         throw new Error(`Shopify price update errors: ${errorMessages}`);
       }
     }
 
     if (inventoryUpdateData.length > 0) {
+      syncProductsLogger.info('Updating inventory quantities', {
+        jobId: process.jobId,
+        processId: process.id,
+        inventoryUpdateCount: inventoryUpdateData.length
+      });
+
       const inventoryResult = await setInventoryQuantities(inventoryUpdateData, process.shop.domain);
 
       if (!inventoryResult.success || inventoryResult.userErrors.length > 0) {
         const errorMessages = inventoryResult.userErrors.map(err => err.message).join('; ');
+        syncProductsLogger.error('Shopify inventory update failed', {
+          jobId: process.jobId,
+          processId: process.id,
+          errors: errorMessages
+        });
         throw new Error(`Shopify inventory update errors: ${errorMessages}`);
       }
     }
+
+    syncProductsLogger.info('Variant batch processing completed', {
+      jobId: process.jobId,
+      processId: process.id,
+      updatedCount,
+      skippedCount,
+      priceUpdates: priceUpdateData.length,
+      inventoryUpdates: inventoryUpdateData.length
+    });
 
     await prisma.process.update({
       where: { id: process.id },

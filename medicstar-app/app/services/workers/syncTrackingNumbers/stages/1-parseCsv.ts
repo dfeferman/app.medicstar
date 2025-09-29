@@ -5,6 +5,7 @@ import { $Enums } from "@prisma/client";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 import { parseTrackingCsv } from "../../../../utils/trackingCsvParser";
 import { Process } from "@prisma/client";
+import { trackNumbersLogger } from "../../../../../lib/logger";
 
 type JsonObject = Record<string, unknown>;
 
@@ -13,6 +14,12 @@ interface JobData extends JsonObject {
 }
 
 const parseTrackingCsvTask = async (process: ProcessWithShop) => {
+  trackNumbersLogger.info('Starting tracking CSV parsing', {
+    jobId: process.jobId,
+    processId: process.id,
+    shopDomain: process.shop.domain
+  });
+
   const job = await prisma.job.findUnique({
     where: { id: process.jobId }
   });
@@ -29,6 +36,14 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
 
   const { parsedOrders, validLineItemsCount, totalCsvRows } = parseTrackingCsv(fileContent);
+
+  trackNumbersLogger.info('Tracking CSV parsing completed', {
+    jobId: process.jobId,
+    processId: process.id,
+    totalCsvRows,
+    validLineItemsCount,
+    ordersFound: parsedOrders.length
+  });
 
   await prisma.job.update({
     where: { id: process.jobId },
@@ -83,8 +98,12 @@ const parseTrackingCsvTask = async (process: ProcessWithShop) => {
   }
   try {
     fs.unlinkSync(filePath);
+    trackNumbersLogger.info('Tracking CSV file cleaned up', { filePath });
   } catch (error) {
-    console.warn(`[parseTrackingCsv] Failed to clean up file ${filePath}:`, error);
+    trackNumbersLogger.warn('Failed to clean up tracking CSV file', {
+      filePath,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

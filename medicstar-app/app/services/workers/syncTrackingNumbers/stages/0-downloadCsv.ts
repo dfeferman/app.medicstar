@@ -5,11 +5,18 @@ import * as path from "path";
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
+import { trackNumbersLogger } from "../../../../../lib/logger";
 
 const DOWNLOADS_FOLDER = "downloads";
 const TRACKING_CSV_URL = process.env.INPUT_TRACKING_FILE_URL as string;
 
 const downloadTrackingCsvTask = async (process: ProcessWithShop) => {
+  trackNumbersLogger.info('Starting tracking CSV download', {
+    jobId: process.jobId,
+    processId: process.id,
+    shopDomain: process.shop.domain
+  });
+
   if (!TRACKING_CSV_URL) {
     throw new Error("INPUT_TRACKING_FILE_URL environment variable is not set");
   }
@@ -29,8 +36,21 @@ const downloadTrackingCsvTask = async (process: ProcessWithShop) => {
   });
 
   if (response.status !== 200) {
+    trackNumbersLogger.error('Failed to download tracking CSV file', {
+      jobId: process.jobId,
+      processId: process.id,
+      status: response.status,
+      statusText: response.statusText
+    });
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
+
+  trackNumbersLogger.info('Tracking CSV file downloaded successfully', {
+    jobId: process.jobId,
+    processId: process.id,
+    filePath,
+    fileSize: response.headers['content-length']
+  });
 
   await prisma.job.update({
     where: {

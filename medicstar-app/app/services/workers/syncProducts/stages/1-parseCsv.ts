@@ -7,6 +7,7 @@ import type { Process } from '@prisma/client'
 import prisma from "../../../../db.server";
 import { buildLowerKeyMap, findFirstMatchingHeader, convertToStringOrEmpty, convertToIntegerOrZero } from "../../../../utils/xlsx";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
+import { syncProductsLogger } from "../../../../../lib/logger";
 
 type CsvRowData = Record<string, unknown>;
 type JsonObject = Record<string, unknown>;
@@ -30,6 +31,12 @@ const headerAliases: Record<string, string[]> = {
 };
 
 const parseCsvTask = async (processData: ProcessWithShop) => {
+  syncProductsLogger.info('Starting CSV parsing', {
+    jobId: processData.jobId,
+    processId: processData.id,
+    shopDomain: processData.shop.domain
+  });
+
   const job = await prisma.job.findUnique({
     where: { id: processData.jobId },
     select: { data: true }
@@ -76,6 +83,11 @@ const parseCsvTask = async (processData: ProcessWithShop) => {
   }
 
   if (variants.length === 0) {
+    syncProductsLogger.warn('No variants found in CSV file', {
+      jobId: processData.jobId,
+      processId: processData.id,
+      filePath
+    });
     await prisma.job.update({
       where: { id: processData.jobId },
       data: {
@@ -87,6 +99,14 @@ const parseCsvTask = async (processData: ProcessWithShop) => {
   }
 
   const totalBatches = Math.ceil(variants.length / BATCH_SIZE);
+
+  syncProductsLogger.info('CSV parsing completed', {
+    jobId: processData.jobId,
+    processId: processData.id,
+    variantsCount: variants.length,
+    totalBatches,
+    batchSize: BATCH_SIZE
+  });
 
   await prisma.job.update({
     where: { id: processData.jobId },

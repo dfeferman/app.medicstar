@@ -2,8 +2,15 @@ import { $Enums } from "@prisma/client";
 import prisma from "../../../../db.server";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
 import { cleanupDownloadedFile } from "../../helpers/removeFile";
+import { syncProductsLogger } from "../../../../../lib/logger";
 
 const finishTask = async (process: ProcessWithShop) => {
+  syncProductsLogger.info('Starting job finish process', {
+    jobId: process.jobId,
+    processId: process.id,
+    shopDomain: process.shop.domain
+  });
+
   const allProcesses = await prisma.process.findMany({
     where: { jobId: process.jobId },
     select: {
@@ -28,6 +35,13 @@ const finishTask = async (process: ProcessWithShop) => {
   });
 
   if (failedProcesses.length > 0) {
+    syncProductsLogger.error('Job failed due to failed processes', {
+      jobId: process.jobId,
+      processId: process.id,
+      failedProcessCount: failedProcesses.length,
+      failedProcesses: failedProcesses.map(p => ({ id: p.id, type: p.type, logMessage: p.logMessage }))
+    });
+
     await prisma.job.update({
       where: { id: process.jobId },
       data: {
@@ -43,6 +57,14 @@ const finishTask = async (process: ProcessWithShop) => {
   if (pendingProcesses.length > 0 || processingProcesses.length > 0) {
     return;
   }
+
+  syncProductsLogger.info('Job completed successfully', {
+    jobId: process.jobId,
+    processId: process.id,
+    totalProcesses: completedProcesses.length + 1,
+    completedProcesses: completedProcesses.length,
+    failedProcesses: failedProcesses.length
+  });
 
   await prisma.job.update({
     where: { id: process.jobId },

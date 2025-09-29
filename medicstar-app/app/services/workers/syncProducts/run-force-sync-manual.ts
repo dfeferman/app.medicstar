@@ -1,8 +1,9 @@
 import { $Enums } from "@prisma/client";
 import prisma from "../../../db.server";
+import { syncProductsLogger } from "../../../../lib/logger";
 
 async function runSyncNow() {
-  console.log("🚀 Starting manual sync process");
+  syncProductsLogger.info("Starting manual sync process");
 
   try {
     const shops = await prisma.shop.findMany({
@@ -10,13 +11,16 @@ async function runSyncNow() {
     });
 
     if (shops.length === 0) {
-      console.log("❌ No shops found in database");
+      syncProductsLogger.error("No shops found in database");
       process.exit(1);
     }
 
     for (const shop of shops) {
       try {
-        console.log(`🔄 Creating sync job for shop: ${shop.domain} (ID: ${shop.id})`);
+        syncProductsLogger.info("Creating sync job for shop", {
+          shopDomain: shop.domain,
+          shopId: shop.id
+        });
 
         const job = await prisma.job.create({
           data: {
@@ -36,12 +40,26 @@ async function runSyncNow() {
             logMessage: `Download CSV process created for job ${job.id} in shop ${shop.domain}`
           }
         });
+
+        syncProductsLogger.info("Successfully created sync job and process", {
+          jobId: job.id,
+          shopDomain: shop.domain,
+          shopId: shop.id
+        });
       } catch (shopError) {
-        console.error(`❌ Failed to create sync job for shop ${shop.domain}:`, shopError);
+        syncProductsLogger.error("Failed to create sync job for shop", {
+          shopDomain: shop.domain,
+          shopId: shop.id,
+          error: shopError instanceof Error ? shopError.message : 'Unknown error',
+          stack: shopError instanceof Error ? shopError.stack : undefined
+        });
       }
     }
   } catch (error) {
-    console.error("❌ Failed to run manual sync process:", error);
+    syncProductsLogger.error("Failed to run manual sync process", {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     process.exit(1);
   }
 }

@@ -4,6 +4,7 @@ import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrap
 import { updateOrderTracking } from "../../../../utils/updateOrderTracking";
 import { OrderData, LineItem } from "../../../../utils/trackingCsvParser";
 import { TrackingStatus } from "../../../../constants/trackingStatus";
+import { trackNumbersLogger } from "../../../../../lib/logger";
 
 export interface TrackingUpdateProcessMetadata {
   ordersFoundInCsv: number;
@@ -28,6 +29,15 @@ const updateTrackingNumbersTask = async (process: ProcessWithShop) => {
   const ordersFoundInCsv = processData.metadata.ordersFoundInCsv;
   const isLastOrder = processData.metadata.isLastOrder;
 
+  trackNumbersLogger.info('Starting tracking number update', {
+    jobId: process.jobId,
+    processId: process.id,
+    shopDomain: process.shop.domain,
+    orderName: orderData.orderName,
+    lineItemsCount: orderData.lineItems.length,
+    isLastOrder
+  });
+
   if (!orderData) {
     throw new Error(`No order data found in process ${process.id}`);
   }
@@ -38,12 +48,26 @@ const updateTrackingNumbersTask = async (process: ProcessWithShop) => {
   });
 
   if (trackingUpdateResult.status === TrackingStatus.ERROR) {
+    trackNumbersLogger.error('Tracking update failed', {
+      jobId: process.jobId,
+      processId: process.id,
+      orderName: orderData.orderName,
+      error: trackingUpdateResult.error
+    });
     throw new Error(trackingUpdateResult.error || 'Failed to update tracking numbers');
   }
 
   const logMessage = trackingUpdateResult.status === TrackingStatus.SKIPPED
     ? `Order ${orderData.orderName} skipped: ${trackingUpdateResult.reason}`
     : `Order ${orderData.orderName} tracking updated successfully`;
+
+  trackNumbersLogger.info('Tracking update completed', {
+    jobId: process.jobId,
+    processId: process.id,
+    orderName: orderData.orderName,
+    status: trackingUpdateResult.status,
+    reason: trackingUpdateResult.reason
+  });
 
   await prisma.process.update({
     where: { id: process.id },

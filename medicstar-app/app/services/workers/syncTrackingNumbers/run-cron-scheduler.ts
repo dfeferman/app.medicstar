@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { $Enums } from '@prisma/client';
 import prisma from '../../../db.server';
+import { trackNumbersLogger } from '../../../../lib/logger';
 
 export const startTrackingCronJob = () => {
   // Schedule tracking sync every 30 minutes by default
@@ -13,7 +14,7 @@ export const startTrackingCronJob = () => {
       });
 
       if (shops.length === 0) {
-        console.error('[TRACKING_CRON] No shops found in database');
+        trackNumbersLogger.error('No shops found in database for tracking cron job');
         return;
       }
 
@@ -31,7 +32,11 @@ export const startTrackingCronJob = () => {
           });
 
           if (existingJob) {
-            console.log(`[TRACKING_CRON] Skipping shop ${shop.domain} - tracking job ${existingJob.id} already in progress`);
+            trackNumbersLogger.info('Skipping shop - tracking job already in progress', {
+              shopDomain: shop.domain,
+              shopId: shop.id,
+              existingJobId: existingJob.id
+            });
             continue;
           }
 
@@ -54,18 +59,30 @@ export const startTrackingCronJob = () => {
             }
           });
 
-          console.log(`[TRACKING_CRON] Created tracking job ${job.id} for shop ${shop.domain}`);
+          trackNumbersLogger.info('Created tracking job for shop', {
+            jobId: job.id,
+            shopDomain: shop.domain,
+            shopId: shop.id
+          });
         } catch (shopError) {
-          console.error(`[TRACKING_CRON] ❌ Failed to create tracking job for shop ${shop.domain}:`, shopError);
+          trackNumbersLogger.error('Failed to create tracking job for shop', {
+            shopDomain: shop.domain,
+            shopId: shop.id,
+            error: shopError instanceof Error ? shopError.message : 'Unknown error',
+            stack: shopError instanceof Error ? shopError.stack : undefined
+          });
         }
       }
-      console.log(`[TRACKING_CRON] Tracking sync job creation completed for ${shops.length} shops`);
+      trackNumbersLogger.info('Tracking sync job creation completed', { shopCount: shops.length });
     } catch (error) {
-      console.error('[TRACKING_CRON] Tracking sync job creation failed:', error);
+      trackNumbersLogger.error('Tracking sync job creation failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   }, {
     timezone: "UTC"
   });
 
-  console.log(`[TRACKING_CRON] Tracking cron job scheduled with pattern: ${cronSchedule}`);
+  trackNumbersLogger.info('Tracking cron job scheduled', { cronSchedule });
 };

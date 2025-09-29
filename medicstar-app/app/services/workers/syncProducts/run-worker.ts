@@ -5,6 +5,7 @@ import { parseCsv } from './stages/1-parseCsv';
 import { processVariantBatch } from './stages/2-updateVariants';
 import { finish } from './stages/3-finish';
 import { sleep } from '../helpers/sleep';
+import { syncProductsLogger } from '../../../../lib/logger';
 
 export const runWorker = async (): Promise<void> => {
   try {
@@ -24,12 +25,12 @@ export const runWorker = async (): Promise<void> => {
     });
 
     if (!pendingJob) {
-      console.log('[runWorker] No pending jobs found, sleeping...');
+      syncProductsLogger.info('No pending jobs found, sleeping...');
       await sleep(1000);
       return runWorker();
     }
 
-    console.log(`[runWorker] Found pending job ${pendingJob.id}`);
+    syncProductsLogger.info('Found pending job', { jobId: pendingJob.id });
 
     const pendingProcess = await prisma.process.findFirst({
       where: {
@@ -42,12 +43,16 @@ export const runWorker = async (): Promise<void> => {
     });
 
     if (!pendingProcess) {
-      console.log(`[runWorker] No pending processes for job ${pendingJob.id}, sleeping...`);
+      syncProductsLogger.info('No pending processes for job, sleeping...', { jobId: pendingJob.id });
       await sleep(1000);
       return runWorker();
     }
 
-    console.log(`[runWorker] Processing ${pendingProcess.type} for job ${pendingJob.id}`);
+    syncProductsLogger.info('Processing process for job', {
+      jobId: pendingJob.id,
+      processType: pendingProcess.type,
+      processId: pendingProcess.id
+    });
 
     switch (pendingProcess.type) {
       case $Enums.ProcessType.DOWNLOAD_FILE:
@@ -70,7 +75,10 @@ export const runWorker = async (): Promise<void> => {
     return runWorker();
 
   } catch (error) {
-    console.error('[runWorker] Error:', error);
+    syncProductsLogger.error('Worker error occurred', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
 
     if (error instanceof Error && error.message.includes('Job')) {
       const jobId = error.message.match(/Job (\d+)/)?.[1];
@@ -82,6 +90,7 @@ export const runWorker = async (): Promise<void> => {
             logMessage: `Job failed: ${error.message}`
           }
         });
+        syncProductsLogger.error('Job marked as failed', { jobId: parseInt(jobId), error: error.message });
       }
     }
 
@@ -108,7 +117,7 @@ const fixZombieJobs = async () => {
   });
 
   if (result.count > 0) {
-    console.log(`[fixZombieJobs] Fixed ${result.count} zombie variant jobs`);
+    syncProductsLogger.warn('Fixed zombie variant jobs', { count: result.count });
   }
 };
 
@@ -132,7 +141,7 @@ const fixZombieProcesses = async () => {
   });
 
   if (result.count > 0) {
-    console.log(`[fixZombieProcesses] Fixed ${result.count} zombie variant processes`);
+    syncProductsLogger.warn('Fixed zombie variant processes', { count: result.count });
   }
 };
 

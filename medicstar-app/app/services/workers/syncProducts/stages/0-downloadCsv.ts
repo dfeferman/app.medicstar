@@ -5,11 +5,18 @@ import * as path from "path";
 import prisma from "../../../../db.server";
 import { $Enums } from "@prisma/client";
 import { runProcessWrapper, ProcessWithShop } from "../../helpers/runProcessWrapper";
+import { syncProductsLogger } from "../../../../../lib/logger";
 
 const DOWNLOADS_FOLDER = "downloads";
 const EXCEL_URL = process.env.INPUT_PRODUCT_FILE_URL as string;
 
 const downloadCsvTask = async (process: ProcessWithShop) => {
+  syncProductsLogger.info('Starting CSV download', {
+    jobId: process.jobId,
+    processId: process.id,
+    shopDomain: process.shop.domain
+  });
+
   if (!EXCEL_URL) {
     throw new Error("INPUT_PRODUCT_FILE_URL environment variable is not set");
   }
@@ -30,8 +37,21 @@ const downloadCsvTask = async (process: ProcessWithShop) => {
 
 
   if (response.status !== 200) {
+    syncProductsLogger.error('Failed to download CSV file', {
+      jobId: process.jobId,
+      processId: process.id,
+      status: response.status,
+      statusText: response.statusText
+    });
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
+
+  syncProductsLogger.info('CSV file downloaded successfully', {
+    jobId: process.jobId,
+    processId: process.id,
+    filePath,
+    fileSize: response.headers['content-length']
+  });
 
   await prisma.job.update({
     where: {

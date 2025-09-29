@@ -1,22 +1,26 @@
 import { $Enums } from '@prisma/client';
 import prisma from '../../../db.server';
+import { trackNumbersLogger } from '../../../../lib/logger';
 
 const FORCE_TRACKING_SYNC = async () => {
   try {
-    console.log('[FORCE_TRACKING_SYNC] Starting manual tracking sync...');
+    trackNumbersLogger.info('Starting manual tracking sync');
 
     const shops = await prisma.shop.findMany({
       select: { id: true, domain: true }
     });
 
     if (shops.length === 0) {
-      console.error('[FORCE_TRACKING_SYNC] No shops found in database');
+      trackNumbersLogger.error('No shops found in database');
       return;
     }
 
     for (const shop of shops) {
       try {
-        console.log(`[FORCE_TRACKING_SYNC] Creating tracking job for shop ${shop.domain}`);
+        trackNumbersLogger.info('Creating tracking job for shop', {
+          shopDomain: shop.domain,
+          shopId: shop.id
+        });
 
         const job = await prisma.job.create({
           data: {
@@ -37,15 +41,27 @@ const FORCE_TRACKING_SYNC = async () => {
           }
         });
 
-        console.log(`[FORCE_TRACKING_SYNC] ✅ Created tracking job ${job.id} for shop ${shop.domain}`);
+        trackNumbersLogger.info('Successfully created tracking job and process', {
+          jobId: job.id,
+          shopDomain: shop.domain,
+          shopId: shop.id
+        });
       } catch (shopError) {
-        console.error(`[FORCE_TRACKING_SYNC] ❌ Failed to create tracking job for shop ${shop.domain}:`, shopError);
+        trackNumbersLogger.error('Failed to create tracking job for shop', {
+          shopDomain: shop.domain,
+          shopId: shop.id,
+          error: shopError instanceof Error ? shopError.message : 'Unknown error',
+          stack: shopError instanceof Error ? shopError.stack : undefined
+        });
       }
     }
 
-    console.log(`[FORCE_TRACKING_SYNC] Manual tracking sync job creation completed for ${shops.length} shops`);
+    trackNumbersLogger.info('Manual tracking sync job creation completed', { shopCount: shops.length });
   } catch (error) {
-    console.error('[FORCE_TRACKING_SYNC] Manual tracking sync failed:', error);
+    trackNumbersLogger.error('Manual tracking sync failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
   }
 };
 

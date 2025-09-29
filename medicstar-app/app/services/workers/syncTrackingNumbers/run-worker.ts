@@ -5,6 +5,7 @@ import { parseCsv } from './stages/1-parseCsv';
 import { updateTrackingNumbers } from './stages/2-updateTrackingNumbers';
 import { finish } from './stages/3-finish';
 import { sleep } from '../helpers/sleep';
+import { trackNumbersLogger } from '../../../../lib/logger';
 
 export const runTrackingWorker = async (): Promise<void> => {
   let pendingJob: any = null;
@@ -26,12 +27,12 @@ export const runTrackingWorker = async (): Promise<void> => {
     });
 
     if (!pendingJob) {
-      console.log('[runTrackingWorker] No pending tracking jobs found, sleeping...');
+      trackNumbersLogger.info('No pending tracking jobs found, sleeping...');
       await sleep(1000);
       return runTrackingWorker();
     }
 
-    console.log(`[runTrackingWorker] Found pending tracking job ${pendingJob.id}`);
+    trackNumbersLogger.info('Found pending tracking job', { jobId: pendingJob.id });
 
     const pendingProcess = await prisma.process.findFirst({
       where: {
@@ -44,12 +45,16 @@ export const runTrackingWorker = async (): Promise<void> => {
     });
 
     if (!pendingProcess) {
-      console.log(`[runTrackingWorker] No pending processes for tracking job ${pendingJob.id}, sleeping...`);
+      trackNumbersLogger.info('No pending processes for tracking job, sleeping...', { jobId: pendingJob.id });
       await sleep(1000);
       return runTrackingWorker();
     }
 
-    console.log(`[runTrackingWorker] Processing ${pendingProcess.type} for tracking job ${pendingJob.id}`);
+    trackNumbersLogger.info('Processing tracking process for job', {
+      jobId: pendingJob.id,
+      processType: pendingProcess.type,
+      processId: pendingProcess.id
+    });
 
     try {
       switch (pendingProcess.type) {
@@ -67,7 +72,13 @@ export const runTrackingWorker = async (): Promise<void> => {
           break;
       }
     } catch (processError) {
-      console.error(`[runTrackingWorker] Process ${pendingProcess.type} failed:`, processError);
+      trackNumbersLogger.error('Process failed', {
+        processType: pendingProcess.type,
+        jobId: pendingJob.id,
+        processId: pendingProcess.id,
+        error: processError instanceof Error ? processError.message : 'Unknown error',
+        stack: processError instanceof Error ? processError.stack : undefined
+      });
 
       // Mark the job as failed when any process fails
       await prisma.job.update({
@@ -79,7 +90,10 @@ export const runTrackingWorker = async (): Promise<void> => {
         }
       });
 
-      console.log(`[runTrackingWorker] ❌ Job ${pendingJob.id} marked as FAILED due to ${pendingProcess.type} process failure`);
+      trackNumbersLogger.error('Job marked as FAILED due to process failure', {
+        jobId: pendingJob.id,
+        processType: pendingProcess.type
+      });
 
       await sleep(1000);
       return runTrackingWorker();
@@ -91,7 +105,11 @@ export const runTrackingWorker = async (): Promise<void> => {
     return runTrackingWorker();
 
   } catch (error) {
-    console.error('[runTrackingWorker] Error:', error);
+    trackNumbersLogger.error('Tracking worker error occurred', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      pendingJobId: pendingJob?.id
+    });
 
     // If we have a pending job, mark it as failed
     if (pendingJob) {
@@ -102,6 +120,7 @@ export const runTrackingWorker = async (): Promise<void> => {
           logMessage: `Tracking job failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         }
       });
+      trackNumbersLogger.error('Pending job marked as failed', { jobId: pendingJob.id });
     }
 
     // Handle specific Job errors
@@ -115,6 +134,7 @@ export const runTrackingWorker = async (): Promise<void> => {
             logMessage: `Tracking job failed: ${error.message}`
           }
         });
+        trackNumbersLogger.error('Job marked as failed due to error', { jobId: parseInt(jobId), error: error.message });
       }
     }
 
@@ -141,7 +161,7 @@ const fixZombieTrackingJobs = async () => {
   });
 
   if (result.count > 0) {
-    console.log(`[fixZombieTrackingJobs] Fixed ${result.count} zombie tracking jobs`);
+    trackNumbersLogger.warn('Fixed zombie tracking jobs', { count: result.count });
   }
 };
 
@@ -163,7 +183,7 @@ const fixZombieTrackingProcesses = async () => {
   });
 
   if (result.count > 0) {
-    console.log(`[fixZombieTrackingProcesses] Fixed ${result.count} zombie tracking processes`);
+    trackNumbersLogger.warn('Fixed zombie tracking processes', { count: result.count });
   }
 };
 

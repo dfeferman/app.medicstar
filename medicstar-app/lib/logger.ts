@@ -47,4 +47,46 @@ export const orderLogger = winston.createLogger({
   ],
 });
 
+export const trackNumbersLogger = winston.createLogger({
+  level: isDevelopment ? 'verbose' : 'info',
+  format: combine(timestamp(), json()),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize({ all: true }),
+        winston.format.simple(),
+      ),
+    }),
+    new DailyRotateFile({
+      filename: './logs/track-numbers-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '10m',
+      maxFiles: '14d',
+      level: 'info',
+    }),
+  ],
+});
+
+export const syncProductsLogger = winston.createLogger({
+  level: isDevelopment ? 'verbose' : 'info',
+  format: combine(timestamp(), json()),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize({ all: true }),
+        winston.format.simple(),
+      ),
+    }),
+    new DailyRotateFile({
+      filename: './logs/sync-products-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '10m',
+      maxFiles: '14d',
+      level: 'info',
+    }),
+  ],
+});
+
 export default logger;

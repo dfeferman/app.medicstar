@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { $Enums } from '@prisma/client';
 import prisma from '../../../db.server';
+import { syncProductsLogger } from '../../../../lib/logger';
 
 export const startDailyCronJob = () => {
   const cronSchedule = process.env.CRON_SCHEDULE || '0 0 * * *';
@@ -12,7 +13,7 @@ export const startDailyCronJob = () => {
       });
 
       if (shops.length === 0) {
-        console.error('[CRON] No shops found in database');
+        syncProductsLogger.error('No shops found in database for cron job');
         return;
       }
 
@@ -37,12 +38,20 @@ export const startDailyCronJob = () => {
             }
           });
         } catch (shopError) {
-          console.error(`[CRON] ❌ Failed to create sync job for shop ${shop.domain}:`, shopError);
+          syncProductsLogger.error('Failed to create sync job for shop', {
+            shopDomain: shop.domain,
+            shopId: shop.id,
+            error: shopError instanceof Error ? shopError.message : 'Unknown error',
+            stack: shopError instanceof Error ? shopError.stack : undefined
+          });
         }
       }
-      console.log(`[CRON] Daily sync job creation completed for ${shops.length} shops`);
+      syncProductsLogger.info('Daily sync job creation completed', { shopCount: shops.length });
     } catch (error) {
-      console.error('[CRON] Daily sync job creation failed:', error);
+      syncProductsLogger.error('Daily sync job creation failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   }, {
     timezone: "UTC"
