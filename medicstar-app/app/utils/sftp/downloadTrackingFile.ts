@@ -18,7 +18,7 @@ const getSftpConfig = (): SftpConfig => {
   const username = process.env.TRACKING_SFTP_USERNAME;
   const password = process.env.TRACKING_SFTP_PASSWORD;
   const port = parseInt(process.env.TRACKING_SFTP_PORT || '22');
-  const remoteDir = process.env.TRACKING_SFTP_REMOTE_DIR || 'PROD/out';
+  const remoteDir = process.env.TRACKING_SFTP_REMOTE_DIR || '/';
 
   if (!host || !username || !password) {
     throw new Error('SFTP configuration missing. Please set SFTP_HOST, SFTP_USERNAME, and SFTP_PASSWORD environment variables.');

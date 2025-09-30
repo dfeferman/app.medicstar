@@ -18,7 +18,7 @@ const getSftpConfig = (): SftpConfig => {
   const username = process.env.PRODUCTS_SFTP_USERNAME;
   const password = process.env.PRODUCTS_SFTP_PASSWORD;
   const port = parseInt(process.env.PRODUCTS_SFTP_PORT || '22');
-  const remoteDir = process.env.PRODUCTS_SFTP_REMOTE_DIR || '/www/transfer/update/out';
+  const remoteDir = process.env.PRODUCTS_SFTP_REMOTE_DIR || '/';
 
   if (!host || !username || !password) {
     throw new Error('Products SFTP configuration missing. Please set PRODUCTS_SFTP_HOST, PRODUCTS_SFTP_USERNAME, and PRODUCTS_SFTP_PASSWORD environment variables.');
