@@ -23,6 +23,23 @@ const shopify = shopifyApp({
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
+    hooks: {
+      afterAuth: async ({ session }) => {
+        const domain = session.shop;
+
+        const shop = await prisma.shop.upsert({
+          where: { domain },
+          update: {
+            updatedAt: new Date(),
+          },
+          create: {
+            domain,
+          },
+        });
+
+        console.log(`[afterAuth] Shop ${shop.id} (${domain}) is ready`);
+      },
+    }
 });
 
 export default shopify;
