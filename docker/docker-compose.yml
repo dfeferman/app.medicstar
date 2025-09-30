@@ -1,0 +1,42 @@
+networks:
+  traefik-public:
+    external: true
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:   ${POSTGRES_DB}
+    labels:
+      traefik.enable: false
+  app:
+    build:
+      context: ..
+      dockerfile: ./docker/node/Dockerfile
+    restart: always
+    command: sh -c "npm run setup && npm run pm2-start && npm run pm2-logs"
+    labels:
+      traefik.enable: true
+      traefik.docker.network: traefik-public
+      traefik.constraint-label: traefik-public
+      traefik.http.routers.app-http.rule: Host(`${APPLICATION_DOMAIN?Variable not set}`)
+      traefik.http.routers.app-http.entrypoints: http
+      traefik.http.routers.app-http.middlewares: https-redirect
+      traefik.http.routers.app-https.rule: Host(`${APPLICATION_DOMAIN?Variable not set}`)
+      traefik.http.routers.app-https.entrypoints: https
+      traefik.http.routers.app-https.tls: true
+      traefik.http.routers.app-https.tls.certresolver: le
+      traefik.http.services.app.loadbalancer.server.port: ${APPLICATION_PORT}
+    networks:
+      traefik-public:
+      default:
+    depends_on:
+      - postgres
+
+volumes:
+  db-data:
