@@ -1,5 +1,6 @@
 import prisma from "../../db.server";
 import { $Enums } from "@prisma/client";
+import { json } from "@remix-run/node";
 
 export const toggleAutoSync = async (shopId: number, enabled: boolean, jobType: $Enums.JobType) => {
   const jobTypeName = jobType === $Enums.JobType.UPDATE_VARIANTS ? 'Product' : 'Tracking';
@@ -32,7 +33,7 @@ export const toggleAutoSync = async (shopId: number, enabled: boolean, jobType: 
     });
   }
 
-  return Response.json({
+  return json({
     success: true,
     message: `${jobTypeName} sync ${enabled ? 'enabled' : 'disabled'} successfully`
   });
