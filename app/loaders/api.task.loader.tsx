@@ -2,6 +2,7 @@ import type { LoaderFunction } from "@remix-run/node";
 import { authenticate } from "app/shopify.server";
 import prisma from "../db.server";
 import { $Enums } from "@prisma/client";
+import { json } from "@remix-run/node";
 
 export const apiTaskLoader: LoaderFunction = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -94,7 +95,7 @@ export const apiTaskLoader: LoaderFunction = async ({ request }) => {
     }
   });
 
-  return Response.json({
+  return json({
     productTask,
     trackingTask,
     pendingProductJobsCount,
