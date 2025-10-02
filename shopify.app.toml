@@ -3,7 +3,7 @@
 client_id = "f41436f31d7d26a7e195c8c61f7df78f"
 name = "medicstar-app"
 handle = "medicstar-app"
-application_url = "https://5e7632cbda8a.ngrok-free.app"
+application_url = "https://356184962573.ngrok-free.app"
 embedded = true
 
 [build]
@@ -25,17 +25,13 @@ api_version = "2025-07"
   topics = [ "orders/create" ]
   uri = "/webhooks/app/order/create"
 
-  [[webhooks.subscriptions]]
-  topics = ["bulk_operations/finish"]
-  uri = "/webhooks/bulk_operations/finish"
-
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_products, read_orders, write_orders, write_inventory, read_locations, read_customers, write_assigned_fulfillment_orders, write_merchant_managed_fulfillment_orders"
 
 [auth]
-redirect_urls = ["https://5e7632cbda8a.ngrok-free.app/auth/callback", "https://5e7632cbda8a.ngrok-free.app/auth/shopify/callback", "https://5e7632cbda8a.ngrok-free.app/api/auth/callback"]
+redirect_urls = ["https://356184962573.ngrok-free.app/auth/callback", "https://356184962573.ngrok-free.app/auth/shopify/callback", "https://356184962573.ngrok-free.app/api/auth/callback"]
 
 [pos]
 embedded = false
