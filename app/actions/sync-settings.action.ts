@@ -6,6 +6,7 @@ import { toggleAutoSync } from "./setting-actions/toggleAutoSync";
 import { startForceSync } from "./setting-actions/startForceSync";
 import { stopPendingTasks } from "./setting-actions/stopPendingTasks";
 import { ActionType, SyncType } from "../constants/syncTypes";
+import { json } from "@remix-run/node";
 
 const getShopByDomain = async (domain: string) => {
   const shop = await prisma.shop.findUnique({
@@ -46,13 +47,13 @@ export const action: ActionFunction = async ({ request }) => {
         return await stopPendingTasks(shop.id, jobType);
 
       default:
-        return Response.json({
+        return json({
           success: false,
           message: "Invalid action type"
         }, { status: 400 });
     }
   } catch (error) {
-    return Response.json({
+    return json({
       success: false,
       message: error instanceof Error ? error.message : "Unknown error occurred"
     }, { status: 500 });

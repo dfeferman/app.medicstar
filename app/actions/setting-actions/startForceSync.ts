@@ -1,5 +1,6 @@
 import prisma from "../../db.server";
 import { $Enums } from "@prisma/client";
+import { json } from "@remix-run/node";
 
 export const startForceSync = async (shop: { id: number; domain: string }, jobType: $Enums.JobType) => {
   const jobTypeName = jobType === $Enums.JobType.UPDATE_VARIANTS ? 'product' : 'tracking';
@@ -30,7 +31,7 @@ export const startForceSync = async (shop: { id: number; domain: string }, jobTy
     }
   });
 
-  return Response.json({
+  return json({
     success: true,
     message: `Force ${jobTypeName} sync started successfully. Task created for Task ID: ${job.id}`
   });

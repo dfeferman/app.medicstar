@@ -1,6 +1,7 @@
 import prisma from "../../db.server";
 import { $Enums } from "@prisma/client";
 import { cleanupDownloadedFile } from "../../services/workers/helpers/removeFile";
+import { json } from "@remix-run/node";
 
 export const stopPendingTasks = async (shopId: number, jobType: $Enums.JobType) => {
   const jobTypeName = jobType === $Enums.JobType.UPDATE_VARIANTS ? 'product' : 'tracking';
@@ -57,7 +58,7 @@ export const stopPendingTasks = async (shopId: number, jobType: $Enums.JobType) 
     }
   });
 
-  return Response.json({
+  return json({
     success: true,
     message: `Stopped ${result.count} pending ${jobTypeName} sync tasks`
   });
