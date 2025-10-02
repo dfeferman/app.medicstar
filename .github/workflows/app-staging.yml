@@ -1,0 +1,19 @@
+name: Deploy Staging Environment
+
+on:
+  push:
+    branches: [ "staging" ]
+
+jobs:
+  build:
+    runs-on: [self-hosted, staging]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get variables
+        run: echo "${{ secrets.STAGING }}" > ./.env
+      - name: Build app
+        run: make build
+      - name: Start app
+        run: make up
+      - name: Clean
+        run: make prune
